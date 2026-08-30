@@ -1,50 +1,55 @@
-# Multi-Market Paper Trading Design
+# Multi-Market OKX Demo Trading Design
 
 ## Goal
 
-Turn the BTC-only trading flow into one validated, reusable trading flow for `BTC-USDT`, `ETH-USDT`, and `SOL-USDT`. Prices and candles come from public exchange market-data APIs; every order remains a local PAPER LIVE simulation and can never trigger an exchange order, wallet signature, or real asset transfer.
+Turn the BTC-only local paper flow into one validated trading flow for `BTC-USDT`, `ETH-USDT`, and `SOL-USDT`. Market data remains public and live; order writes go to OKX's official Demo Trading environment and return OKX order, fill, balance, and cancellation state. No production trading key, wallet transaction, deposit, withdrawal, or real asset transfer is allowed.
 
 ## Product Scope
 
-- Make BTC, ETH, and SOL rows on the market overview navigate to their own trading pages.
-- Support the same quote, candlestick periods, buy/sell form, preview, confirmation, and success flow for all three instruments.
-- Keep BNB, ADA, AVAX, DOT, and POL as readable market-data rows without navigation until their trading flows are intentionally enabled.
-- Preserve OKX as the primary public provider, Kraken as the secondary provider, and an explicitly labelled deterministic demo fallback.
-- Preserve the existing mobile layout and `PAPER LIVE` safety copy.
-- Exclude authenticated OKX APIs, exchange account binding, real order placement, wallet transaction signatures, deposits, withdrawals, WebSockets, and MCP.
+- Make BTC, ETH, and SOL market rows navigate to dynamic trading pages.
+- Support live quote, candlestick periods, buy/sell, market/limit order preview, OKX Demo submission, status, fills, history, balance, and cancellation.
+- Keep BNB, ADA, AVAX, DOT, and POL as read-only market rows.
+- Use OKX as the primary public market provider and Kraken as public market-data fallback.
+- Use only OKX Demo Trading for order writes. Do not fall back to a local successful order when OKX rejects or times out.
+- Label all write-side screens `OKX DEMO`; never call them live trading or real-money trading.
+- Exclude authenticated OKX production APIs, Broker OAuth, user API-key collection, wallet swaps, deposits, withdrawals, WebSockets, MCP, and real payments.
+
+## Why Official Demo Instead of Local Mock
+
+OKX Demo Trading uses the same authenticated order API shape as production and returns platform order IDs and lifecycle state. Requests use a Demo Trading API key plus `x-simulated-trading: 1`; balances and fills are virtual. This proves third-party authentication, request signing, order submission, reconciliation, and error handling without exposing real funds.
+
+It is still a simulation and must be described honestly. It is not a multi-tenant exchange sandbox: one Demo API key maps to one shared demo account. Public writes therefore require an application access boundary.
 
 ## Chosen Architecture
-
-Use one dynamic Next.js route and one instrument-aware component tree:
 
 ```text
 /markets
   -> /trade/btc-usdt
   -> /trade/eth-usdt
   -> /trade/sol-usdt
-       -> /trade/[pair]
-            -> TradeScreen(instrument)
-                 -> useTradeMarket(instrument)
-                      -> /api/market/ticker?instrument=ETH-USDT
-                      -> /api/market/candles?instrument=ETH-USDT&period=4H
-                           -> OKX
-                           -> Kraken
-                           -> explicit client demo fallback
-            -> /trade/[pair]/confirm
-                 -> PaperOrderPreview(instrument, side, amount)
+       -> GET public ticker/candles
+            -> OKX public market API
+            -> Kraken public fallback
+       -> POST /api/demo/orders
+            -> access-session check
+            -> durable Redis rate-limit / idempotency check
+            -> schema / pair / precision / notional validation
+            -> idempotency + session-owned clOrdId
+            -> server-side OKX HMAC signature
+            -> OKX Demo POST /api/v5/trade/order
+       -> GET /api/demo/orders and /fills
+            -> OKX Demo private APIs
+            -> filter to the active application session
+       -> POST /api/demo/orders/[id]/cancel
+            -> verify session-owned clOrdId before cancellation
+            -> OKX Demo cancel endpoint
+       -> GET /api/demo/balance
+            -> controlled shared-demo balance view
 ```
 
-This avoids three copied screens while keeping the allowed trading universe deliberately smaller than the eight-asset market catalogue.
-
-### Alternatives Not Chosen
-
-1. Duplicate one page per asset. This is quick for ETH and SOL but duplicates fetching, validation, labels, confirmation logic, and tests.
-2. Enable all eight assets immediately. The data adapters can support most of them, but it expands precision rules, fallback fixtures, and product QA without adding much interview value beyond the first three instruments.
-3. Connect authenticated OKX order APIs. This violates the current portfolio safety boundary and introduces secrets, permissions, exchange-region constraints, and real financial risk.
+Public visitors can always read market data. Demo order writes require a signed, HTTP-only application session established through a server-side access code. The access code is intended for the owner and approved interview testers; it is not committed or exposed in the browser bundle.
 
 ## Trading Instrument Contract
-
-Define a separate allowlist for tradable instruments rather than treating every market-overview symbol as tradable:
 
 ```ts
 const tradableInstruments = ["BTC-USDT", "ETH-USDT", "SOL-USDT"] as const;
@@ -58,77 +63,120 @@ type TradingPairConfig = {
   quoteSymbol: "USDT";
   priceDecimals: number;
   amountDecimals: number;
-  demoAmount: number;
+  maxDemoNotionalUsdt: number;
 };
 ```
 
-All route parameters and API query parameters must pass through this contract. Unknown values such as `doge-usdt`, lowercase API instruments, or malformed periods receive a 400 response at the API boundary or a Next.js 404 at the page boundary.
+Page params and API input pass through this allowlist. Unsupported pairs return a Next.js 404 or API 400. Order size and price are normalized with OKX public instrument rules before signing; browser-provided precision is never trusted.
 
-## Market-Data Flow
+## Server-Only OKX Demo Adapter
 
-The existing provider adapters already expose instrument-aware ticker and candle methods. The provider service and two single-market API routes will accept a validated `TradableInstrument` instead of defaulting internally to BTC.
+The adapter owns:
+
+- UTC timestamp generation;
+- HMAC-SHA256/Base64 signing;
+- `OK-ACCESS-KEY`, `OK-ACCESS-SIGN`, `OK-ACCESS-TIMESTAMP`, and `OK-ACCESS-PASSPHRASE` headers;
+- the mandatory `x-simulated-trading: 1` header on every private request;
+- bounded timeouts and normalized OKX error envelopes;
+- place, get, list pending/history, fills, cancel, and balance methods.
+
+The adapter has no production-mode flag. Production credentials and withdrawal endpoints do not exist in this code path. All secrets use server-only environment variables:
+
+```dotenv
+TRADING_PROFILE=okx_demo
+OKX_DEMO_API_KEY=
+OKX_DEMO_SECRET_KEY=
+OKX_DEMO_PASSPHRASE=
+DEMO_ACCESS_CODE=
+SESSION_SECRET=
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
+```
+
+Startup validation rejects missing secrets when demo writes are enabled. Logs redact all credential headers, session tokens, and complete OKX payloads that may contain account information.
+
+## Session Ownership and Abuse Controls
+
+- Access-code exchange creates a signed, HTTP-only, `Secure`, `SameSite=Lax` cookie; the raw code is never stored client-side.
+- Each session receives a random ID. `clOrdId` includes a non-reversible, bounded session prefix and a unique suffix.
+- Place/cancel endpoints require the session and CSRF-safe same-origin requests.
+- Order list and fills are filtered by session-owned client order IDs.
+- Cancellation first retrieves/verifies ownership; knowing another OKX `ordId` is insufficient.
+- Allow only BTC/ETH/SOL spot cash orders, bounded amounts, bounded price deviation, and a low maximum demo notional.
+- Apply per-session and per-IP rate limits and a maximum number of open demo orders.
+- Store rate-limit counters, idempotency records, and short-lived order ownership records in Upstash Redis so Vercel serverless instances share the same safety state.
+- The OKX balance is a shared demo-account balance and must be labelled as shared, not as the visitor's personal assets.
+- If credentials are absent, the deployed site remains read-only and presents a controlled sign-in/availability message rather than simulating success.
+
+## Public Market-Data Flow
 
 ```http
 GET /api/market/ticker?instrument=SOL-USDT
 GET /api/market/candles?instrument=ETH-USDT&period=1D
 ```
 
-Response envelopes and cache boundaries remain unchanged. OKX is attempted first; Kraken fills provider failures only when it supports the pair. A client fallback is instrument-specific and always reports `DEMO DATA`.
+The existing adapters become instrument-aware end to end. OKX is attempted first and Kraken is the public fallback. Instrument-specific deterministic fixtures remain allowed only for clearly labelled chart/quote degradation. They never create, fill, cancel, or mutate a demo order.
 
-Changing the selected K-line period aborts the previous candle request. Changing route instruments creates a fresh hook instance and prevents BTC data from briefly appearing on ETH or SOL pages.
+## Order Lifecycle
 
-## UI Behaviour
+The application normalizes OKX state into:
 
-- The header, quote pair, buy/sell labels, amount unit, volume unit, chart accessible name, and confirmation copy use the active base symbol.
-- Price formatting comes from pair configuration: BTC and ETH use two decimals; SOL uses an appropriate two-decimal display while the contract remains extensible.
-- Amount formatting and default demo quantities are pair-specific.
-- The bottom navigation's generic Trade entry may continue to open BTC as the default trading market.
-- Market overview rows link only when `getTradingPairBySymbol(symbol)` returns a configured pair. No `#` links are introduced.
-- Confirmation and success routes retain the selected pair in the URL and provide a correct back link.
+```ts
+type DemoOrderStatus =
+  | "submitting"
+  | "live"
+  | "partially_filled"
+  | "filled"
+  | "canceling"
+  | "canceled"
+  | "rejected";
+```
 
-## Paper Order Boundary
+Submission uses an idempotent `clOrdId`. A timeout after sending is ambiguous, so the server queries by `clOrdId` before allowing a retry. UI success is shown only after OKX returns acceptance or reconciliation finds the order. Business rejection, insufficient demo funds, invalid precision, or upstream timeout remains a visible failure.
 
-The order preview is calculated locally with the existing Paper Engine rules. It stores or displays at least:
+History and fills come from OKX Demo endpoints, not hardcoded arrays. The UI polls conservatively for active orders; WebSocket private channels are deferred.
 
-- instrument;
-- side;
-- order type;
-- base amount;
-- reference or limit price;
-- estimated quote amount;
-- simulated fee;
-- `PAPER LIVE` environment.
+## Dynamic UI Behaviour
 
-The confirmation action does not call OKX, Kraken, a wallet provider, or a blockchain RPC. Safety copy remains visible before and after confirmation: no wallet transaction signature, no exchange order, and no real deduction.
+- Header, pair, buttons, amount/volume units, chart accessible name, preview, confirmation, and result copy use the active instrument.
+- Market rows link only for BTC, ETH, and SOL.
+- The bottom Trade navigation continues to open BTC as the default.
+- Before write access, the page explains that an approved Demo session is required.
+- Confirmation shows `OKX DEMO`, the shared-demo nature of funds, order type, size, limit/reference price, estimated notional, and zero real deduction.
+- Result screens show OKX `ordId`/`clOrdId`, normalized state, and retry/reconciliation guidance.
+- The Orders page replaces hardcoded rows with session-filtered OKX Demo orders and fills. The Assets page labels and displays the shared OKX Demo account balance rather than claiming it is session-owned.
 
-The order book remains presentation-only in this iteration. Its levels are deterministically derived around the active reference price and labelled as part of the paper-trading interface; connecting a live depth endpoint is a separate feature.
+## Failure Rules
 
-## Error Handling
-
-- Invalid page pair: render the Next.js not-found boundary.
-- Invalid API instrument or chart period: return HTTP 400 with a stable error message.
-- Primary-provider failure: attempt the secondary provider.
-- Total provider failure: show instrument-specific deterministic fallback data with `DEMO DATA` and retry.
-- Empty or malformed ticker/candle payload: treat it as provider failure rather than rendering zeros as live data.
-- Route transition or period change: abort stale requests so late responses cannot overwrite the current instrument.
+- Invalid page pair: Next.js not-found.
+- Invalid API pair, side, type, amount, price, or period: HTTP 400.
+- Missing/invalid application session: HTTP 401/403.
+- Demo write disabled or credentials missing: HTTP 503 with a safe availability message.
+- OKX business rejection: preserve its safe code/category without leaking credentials.
+- Ambiguous timeout: reconcile by `clOrdId`; never immediately duplicate an order.
+- OKX Demo unavailable: keep public market data available and disable writes; never report a local fake order as accepted.
 
 ## Testing
 
-- Contract tests for slug parsing, instrument parsing, symbol lookup, and invalid values.
-- Provider-service tests proving the requested instrument reaches OKX/Kraken instead of falling back to BTC.
-- API route tests for ETH/SOL success, missing/invalid instrument, period validation, caching, and provider failure.
-- Hook tests for instrument-specific URLs, route changes, fallback fixtures, retry, and aborted stale requests.
-- Component tests proving dynamic header, units, K-line label, order preview URL, and source badges.
-- Route tests proving the three supported slugs render and unsupported slugs return not-found.
-- Confirmation tests proving ETH/SOL symbols and return URLs remain correct and no wallet/exchange request occurs.
-- Browser QA at 390 px: market-to-trade navigation, 1D-to-4H candle switching, buy/sell preview, confirmation, success, back navigation, and no horizontal overflow.
-- Final checks: full Vitest suite, TypeScript, ESLint, Next.js production build, Git status, GitHub push, and Vercel production deployment.
+- Contract tests for pair parsing, pair config, amount/price precision, notional caps, and invalid input.
+- Signing tests using fixed timestamp/secret vectors; assert the mandatory simulated-trading header and absence of credential logs.
+- Adapter tests for place, reconcile, pending/history, fills, balance, cancel, OKX rejection, malformed responses, and timeout.
+- Session tests for cookie security, invalid access code, order ownership, cross-session cancellation denial, and expiry.
+- API tests for authentication, allowlists, rate limits, idempotency, shared-balance labels, and read-only degradation.
+- Market hook/component tests for BTC/ETH/SOL URLs, dynamic units, quote/candle fallback, and unsupported routes.
+- Browser QA at 390 px for access, place, status, fills/history, cancel, logout/read-only, K-line period changes, and no horizontal overflow.
+- Final verification: full Vitest suite, TypeScript, ESLint, production build, secret scan, GitHub push, and Vercel production deployment.
+
+## External Prerequisites
+
+The project owner must create an OKX Demo Trading API key with only the required Read and Trade permissions from an eligible OKX account. An Upstash Redis database is required for durable rate limits, idempotency, and short-lived ownership records across Vercel serverless instances. Secrets are entered directly into local `.env.local` and Vercel encrypted environment variables, never sent in chat or committed. Demo asset reset and account mode selection remain owner operations in OKX.
 
 ## Success Criteria
 
-1. BTC, ETH, and SOL market rows open distinct dynamic trading URLs.
-2. Each page requests and labels the matching instrument's ticker and candles.
-3. Each order preview and result preserves the matching symbol and pair.
-4. Unsupported pairs cannot reach provider adapters through page or API input.
-5. All trading actions remain clearly simulated and produce zero real financial effects.
-6. Existing market overview, BTC flow, responsive layout, and provider fallback behaviour do not regress.
+1. BTC, ETH, and SOL pages request matching public ticker/candle instruments.
+2. Authorized demo orders are accepted by OKX Demo and display real OKX identifiers and state.
+3. Orders, fills, balance, and cancellation are read from OKX Demo rather than hardcoded fixtures.
+4. Unauthorized or cross-session writes are rejected.
+5. Credentials remain server-only and the adapter cannot switch to production trading.
+6. Missing credentials or OKX failure degrades to read-only, never fake write success.
+7. No request can withdraw, deposit, transfer real assets, sign a wallet transaction, or place a production order.
