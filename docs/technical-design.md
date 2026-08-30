@@ -27,15 +27,29 @@ TradeMarketPanel
       明确标注的 Demo Data
 ```
 
+市场首页通过额外的聚合边界复用相同适配器：
+
+```text
+MarketScreen -> useMarketOverview -> GET /api/market/overview
+                                      ├── OKX batch SPOT tickers
+                                      ├── Kraken missing-pair fallback
+                                      └── parallel 1H candle closes
+```
+
 - `src/lib/market-data/types.ts`：稳定的应用内 ticker、candle 与周期类型。
 - `src/lib/market-data/okx.ts`：OKX 字符串字段校验、数值转换、时间排序与公开 REST 请求；支持 `OKX_API_BASE_URL` 覆盖域名。
 - `src/lib/market-data/kraken.ts`：Kraken ticker/OHLC 响应归一化及周期映射。
 - `src/lib/market-data/market-service.ts`：按 OKX、Kraken 顺序选择首个可用实时数据源，每个生产请求设置 3.5 秒超时。
+- `src/lib/market-data/market-overview.ts`：按产品目录聚合八个 USDT 市场、补齐缺失来源并并行加载趋势数据。
 - `src/app/api/market/*`：浏览器同源 API，隐藏上游差异，并返回数据及真实来源标识。
+- `src/components/markets/use-market-overview.ts`：合并部分实时结果、逐行标注 Demo、保留最后一次成功快照并提供重试。
+- `src/components/markets/market-screen.tsx`：首页来源、更新时间、搜索、分类、加载和错误状态。
 - `src/components/trade/use-btc-market.ts`：请求取消、周期切换、重试及带标识的确定性回退数据。
 - `src/components/trade/candlestick-chart.tsx`：Lightweight Charts 生命周期、缩放、拖动、十字线，以及由 ResizeObserver 驱动的宽高响应式尺寸。
 
 公开行情不需要 API Key。前端不直接访问交易所，避免把上游响应格式、地区域名和限流策略耦合进 UI。页面严格区分 `OKX LIVE`、`KRAKEN LIVE`、`MIXED LIVE` 与 `DEMO DATA`。当前 REST 方案优先保证面试演示的确定性；WebSocket 实时推送留到第二阶段。
+
+`/api/market/overview` 使用 30 秒共享缓存和 120 秒 stale-while-revalidate。服务端实时响应永不混入 fixture；缺失资产只在客户端目录合并阶段补入，并明确显示 `MIXED DATA`/`DEMO`。这让面试演示在上游局部故障时仍可用，同时不把静态数字伪装成实时行情。
 
 ## 推荐后续资源
 

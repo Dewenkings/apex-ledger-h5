@@ -87,7 +87,6 @@ export function useMarketOverview() {
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
     fetch("/api/market/overview", { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error("Market overview request failed");
@@ -108,7 +107,10 @@ export function useMarketOverview() {
     return () => controller.abort();
   }, [retryKey]);
 
-  const retry = useCallback(() => setRetryKey((key) => key + 1), []);
+  const retry = useCallback(() => {
+    setLoading(true);
+    setRetryKey((key) => key + 1);
+  }, []);
 
   return {
     markets: snapshot?.markets ?? [],

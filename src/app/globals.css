@@ -69,6 +69,8 @@
   .change svg { @apply w-3; }
   .sparkline { @apply block h-[38px] w-24 overflow-visible; }
   .sparkline.large { @apply h-[150px] w-full; }
+  .no-spark { @apply grid h-[38px] w-24 place-items-center font-mono text-xs text-muted; }
+  .no-spark.large { @apply h-[150px] w-full; }
   .chip-row { @apply flex gap-2 overflow-auto pb-2.5; scrollbar-width: none; }
   .chip { @apply whitespace-nowrap rounded-full border border-line bg-surface px-3.5 py-2 text-xs text-muted; }
   .chip.active { @apply border-primary bg-primary font-extrabold text-[#04110a]; }
@@ -81,6 +83,23 @@
   .market-row .muted { @apply mt-[3px] text-[10px]; }
   .market-price { @apply text-right; }
   .market-price .change { @apply mt-1.5 flex justify-end; }
+  .overview-meta { @apply mb-3 flex min-h-7 items-center gap-2; }
+  .overview-updated { @apply flex items-center gap-1 font-mono text-[9px] text-muted; }
+  .overview-updated svg { @apply size-3; }
+  .overview-refreshing { @apply ml-auto font-mono text-[9px] text-primary; }
+  .market-overview-warning { @apply mb-3 flex items-center gap-2 rounded-xl border border-warning/20 bg-warning/[0.05] px-3 py-2.5 text-[10px] leading-normal text-[#c9c1a1]; }
+  .market-overview-warning > svg { @apply size-[18px] shrink-0 text-warning; }
+  .market-overview-warning span { @apply flex-1; }
+  .market-overview-warning button { @apply shrink-0 rounded-md border border-warning/30 bg-transparent px-2 py-1 text-[9px] font-bold text-warning; }
+  .favorite-market-wrap { @apply relative; }
+  .favorite-market-wrap > .row-source { @apply absolute top-3.5 right-10; }
+  .row-source { @apply mt-1 inline-flex rounded-full border border-primary/15 bg-primary/[0.05] px-1.5 py-0.5 font-mono text-[7px] font-bold tracking-[0.05em] text-primary; }
+  .row-source.demo { @apply border-warning/20 bg-warning/[0.06] text-warning; }
+  .market-overview-loading { @apply grid gap-3; }
+  .overview-meta-skeleton { @apply h-7 w-44; }
+  .overview-search-skeleton { @apply h-[50px]; }
+  .overview-card-skeleton { @apply h-[126px]; }
+  .overview-list-skeleton { @apply h-[390px]; }
   .empty { @apply flex flex-col items-center gap-[7px] p-[42px] text-muted; }
   .empty svg { @apply size-8; }
 

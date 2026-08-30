@@ -6,6 +6,7 @@ export function AssetMark({ market, size = 38 }: { market: Pick<Market, "icon" |
 }
 
 export function Sparkline({ points, positive = true, large = false }: { points: number[]; positive?: boolean; large?: boolean }) {
+  if (points.length < 2) return <span className={`no-spark ${large ? "large" : ""}`} role="img" aria-label="No price trend">—</span>;
   const max = Math.max(...points); const min = Math.min(...points); const width = large ? 350 : 96; const height = large ? 150 : 38;
   const coords = points.map((p, i) => `${(i / (points.length - 1)) * width},${height - ((p - min) / Math.max(max - min, 1)) * (height - 10) - 5}`).join(" ");
   return <svg className={`sparkline ${large ? "large" : ""}`} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${positive ? "Rising" : "Falling"} price trend`} preserveAspectRatio="none"><polyline points={coords} fill="none" stroke={positive ? "#44e092" : "#f84960"} strokeWidth={large ? 3 : 2.2} strokeLinecap="round" strokeLinejoin="round" /></svg>;

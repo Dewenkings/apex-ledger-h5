@@ -48,6 +48,14 @@ npm run dev
 
 这一阶段没有 WebSocket、订单簿实时化或多币种接入，也没有 MCP 运行时。行情是真实公开行情，但所有下单流程仍为本地 PAPER LIVE 模拟交易，不会扣除钱包资产。
 
+`/markets` 行情首页使用独立的 `/api/market/overview` 聚合接口：
+
+- 覆盖 `BTC / ETH / SOL / BNB / ADA / AVAX / DOT / POL` 八个 USDT 现货市场，旧 `MATIC` 展示已迁移为 `POL`。
+- OKX 使用一次批量 spot ticker 请求；缺失交易对再由 Kraken 公共接口补齐，近期 `1H` 收盘价用于迷你趋势图。
+- 页面同时显示数据来源与更新时间；部分实时结果显示 `MIXED DATA`，缺失行逐条标为 `DEMO`。
+- API 使用 `s-maxage=30, stale-while-revalidate=120`，刷新失败时客户端保留最后一次实时结果。
+- 只有 BTC 行指向已实现的交易页，其余资产不会生成无效的 `#` 交易链接。
+
 参考：[OKX API V5](https://app.okx.com/docs-v5/en)、[Kraken REST API](https://docs.kraken.com/api/docs/rest-api/get-ohlc-data/)、[Lightweight Charts](https://tradingview.github.io/lightweight-charts/)。
 
 ## 质量命令

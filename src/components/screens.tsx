@@ -3,41 +3,21 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
-  ArrowLeft, ArrowRight, Bell, CaretDown, CaretRight, Check, CheckCircle,
-  Clock, Copy, DownloadSimple, Eye, EyeSlash, Gear, Info, Lock, MagnifyingGlass,
+  ArrowRight, CaretDown, CaretRight, Check, CheckCircle,
+  Clock, Copy, DownloadSimple, Eye, EyeSlash, Gear, Info, Lock,
   PaperPlaneTilt, Plus, Receipt, ShieldCheck, SignOut, SlidersHorizontal,
   Swap, UserCircle, Wallet, X,
 } from "@phosphor-icons/react";
 import { AppShell } from "./app-shell";
-import { AssetMark, Change, FavoriteMarketCard, PaperBadge, Sparkline } from "./ui";
+import { BrandHeader } from "./brand-header";
+import { AssetMark, Change, PaperBadge, Sparkline } from "./ui";
 import { TradeMarketPanel } from "./trade/trade-market-panel";
 import { markets, walletProviders, type Market } from "@/lib/data";
-import { estimatePaperOrder, filterMarkets } from "@/lib/trading";
+import { estimatePaperOrder } from "@/lib/trading";
 
 const money = (value: number, digits = 2) => `$${value.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
-
-function BrandHeader({ title, subtitle, back }: { title?: string; subtitle?: string; back?: string }) {
-  return <header className="topbar">
-    <div className="row gap-12">{back ? <Link href={back} className="icon-button" aria-label="Back"><ArrowLeft /></Link> : <div className="brand-mark">A</div>}<div>{title ? <h1>{title}</h1> : <strong className="brand-name">Apex Ledger</strong>}{subtitle && <span className="eyebrow block">{subtitle}</span>}</div></div>
-    <PaperBadge />
-  </header>;
-}
-
-export function MarketScreen() {
-  const [query, setQuery] = useState(""); const [category, setCategory] = useState("All");
-  const visible = useMemo(() => filterMarkets(markets, query).filter((m) => category === "All" || m.category === category), [query, category]);
-  return <AppShell><BrandHeader title="行情概览" subtitle="MARKET OVERVIEW" />
-    <section className="hero-intro"><div><span className="muted">全球加密市场</span><h2>发现你的下一个机会</h2></div><button className="icon-button"><Bell /></button></section>
-    <label className="search"><MagnifyingGlass /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索资产或交易对" /></label>
-    <section><div className="section-title"><h3>自选市场</h3><span className="muted">实时演示数据</span></div><div className="favorite-grid">{markets.slice(0, 3).map((m) => <Link href={m.symbol === "BTC" ? "/trade/btc-usdt" : "#"} key={m.symbol}><FavoriteMarketCard market={m} /></Link>)}</div></section>
-    <section><div className="section-title"><h3>全部资产</h3><SlidersHorizontal className="muted" /></div><div className="chip-row">{["All", "Layer 1", "DeFi", "Payments"].map((item) => <button onClick={() => setCategory(item)} className={`chip ${category === item ? "active" : ""}`} key={item}>{item}</button>)}</div>
-      <div className="market-list"><div className="table-head"><span>资产</span><span>价格 / 24H</span></div>{visible.map((market) => <Link href={market.symbol === "BTC" ? "/trade/btc-usdt" : "#"} className="market-row" key={market.symbol}><div className="row gap-12"><AssetMark market={market} /><div><strong>{market.symbol}</strong><span className="muted block">{market.name}</span></div></div><Sparkline points={market.spark} positive={market.change >= 0} /><div className="market-price"><strong className="mono">{money(market.price, market.price < 1 ? 4 : 2)}</strong><Change value={market.change} /></div></Link>)}</div>
-      {visible.length === 0 && <div className="empty"><MagnifyingGlass /><strong>没有匹配的资产</strong><span>换个关键词试试看</span></div>}
-    </section>
-  </AppShell>;
-}
 
 export function TradeScreen() {
   const [side, setSide] = useState<"buy" | "sell">("buy"); const [type, setType] = useState<"limit" | "market">("limit"); const [amount, setAmount] = useState("0.025");
