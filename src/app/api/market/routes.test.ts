@@ -3,6 +3,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { GET as getCandles } from "./candles/route";
+import { GET as getOverview } from "./overview/route";
 import { GET as getTicker } from "./ticker/route";
 
 const tickerPayload = {
@@ -20,6 +21,36 @@ const tickerPayload = {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("market-data Route Handlers", () => {
+  it("returns a cacheable source-labelled market overview", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/v5/market/tickers")) return Response.json(tickerPayload);
+      if (url.includes("/api/v5/market/candles")) return Response.json({
+        code: "0",
+        data: [["1000", "68000", "69200", "67900", "69000", "5", "0", "0", "1"]],
+      });
+      return new Response("unavailable", { status: 503 });
+    }));
+
+    const response = await getOverview();
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("public, s-maxage=30, stale-while-revalidate=120");
+    expect(await response.json()).toMatchObject({
+      source: "okx",
+      data: [{ instrument: "BTC-USDT", source: "okx", spark: [69000] }],
+    });
+  });
+
+  it("maps total overview failure to a sanitized response", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("unavailable", { status: 503 })));
+
+    const response = await getOverview();
+
+    expect(response.status).toBe(502);
+    expect(await response.json()).toEqual({ error: "Market overview temporarily unavailable" });
+  });
+
   it("returns a normalized public ticker with short shared caching", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(tickerPayload))));
 
