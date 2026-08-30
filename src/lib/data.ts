@@ -11,7 +11,9 @@ export type Market = {
   spark: number[];
 };
 
-export const markets: Market[] = [
+export type MarketCatalogueItem = Market & { symbol: MarketSymbol };
+
+export const markets: MarketCatalogueItem[] = [
   { symbol: "BTC", name: "Bitcoin", price: 68342.1, change: 2.84, color: "#f7931a", icon: "₿", category: "Payments", spark: [16, 20, 18, 26, 23, 31, 29, 38] },
   { symbol: "ETH", name: "Ethereum", price: 3521.64, change: -1.12, color: "#627eea", icon: "◆", category: "Layer 1", spark: [34, 32, 35, 28, 29, 24, 26, 22] },
   { symbol: "SOL", name: "Solana", price: 178.24, change: 4.67, color: "#9d63ff", icon: "S", category: "Layer 1", spark: [12, 15, 18, 16, 23, 26, 25, 34] },
