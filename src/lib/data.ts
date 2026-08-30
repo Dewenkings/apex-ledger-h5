@@ -1,7 +1,7 @@
 import type { MarketSymbol } from "./market-data/types";
 
 export type Market = {
-  symbol: MarketSymbol;
+  symbol: MarketSymbol | "USDT";
   name: string;
   price: number;
   change: number;

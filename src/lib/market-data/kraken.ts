@@ -1,6 +1,16 @@
-import type { ChartPeriod, MarketCandle, MarketTicker } from "./types";
+import type { ChartPeriod, MarketCandle, MarketInstrument, MarketTicker } from "./types";
 
 const KRAKEN_BASE_URL = "https://api.kraken.com";
+
+const krakenPairs: Partial<Record<MarketInstrument, string>> = {
+  "BTC-USDT": "XBTUSDT",
+  "ETH-USDT": "ETHUSDT",
+  "SOL-USDT": "SOLUSDT",
+  "ADA-USDT": "ADAUSDT",
+  "AVAX-USDT": "AVAXUSDT",
+  "DOT-USDT": "DOTUSDT",
+  "POL-USDT": "POLUSDT",
+};
 
 type Fetcher = typeof fetch;
 type KrakenEnvelope = { error?: unknown; result?: unknown };
@@ -14,6 +24,10 @@ const periodIntervals: Record<ChartPeriod, number> = {
 
 export function toKrakenInterval(period: ChartPeriod): number {
   return periodIntervals[period];
+}
+
+export function getKrakenPair(instrument: MarketInstrument): string | undefined {
+  return krakenPairs[instrument];
 }
 
 function parseFiniteNumber(value: unknown, errorMessage: string): number {
@@ -43,14 +57,18 @@ function arrayNumber(value: unknown, index: number, errorMessage: string): numbe
   return parseFiniteNumber(value[index], errorMessage);
 }
 
-export function normalizeKrakenTicker(payload: unknown, timestamp = Date.now()): MarketTicker {
+export function normalizeKrakenTicker(
+  payload: unknown,
+  instrument: MarketInstrument = "BTC-USDT",
+  timestamp = Date.now(),
+): MarketTicker {
   const errorMessage = "Invalid Kraken ticker payload";
   const ticker = getPairValue(getResult(payload, errorMessage), errorMessage);
   if (!ticker || typeof ticker !== "object") throw new Error(errorMessage);
   const fields = ticker as Record<string, unknown>;
 
   return {
-    instrument: "BTC-USDT",
+    instrument,
     last: arrayNumber(fields.c, 0, errorMessage),
     open24h: parseFiniteNumber(fields.o, errorMessage),
     high24h: arrayNumber(fields.h, 1, errorMessage),
@@ -91,14 +109,38 @@ export class KrakenMarketAdapter {
   ) {}
 
   async getTicker(): Promise<MarketTicker> {
+    return this.getTickerForInstrument("BTC-USDT");
+  }
+
+  async getTickerForInstrument(instrument: MarketInstrument): Promise<MarketTicker> {
+    const pair = getKrakenPair(instrument);
+    if (!pair) throw new Error(`Unsupported Kraken instrument: ${instrument}`);
     const url = new URL("/0/public/Ticker", KRAKEN_BASE_URL);
-    url.searchParams.set("pair", "XBTUSDT");
-    return normalizeKrakenTicker(await this.request(url), this.now());
+    url.searchParams.set("pair", pair);
+    return normalizeKrakenTicker(await this.request(url), instrument, this.now());
+  }
+
+  async getTickers(instruments: MarketInstrument[]): Promise<MarketTicker[]> {
+    const requests = instruments
+      .filter((instrument) => getKrakenPair(instrument))
+      .map((instrument) => this.getTickerForInstrument(instrument));
+    const results = await Promise.allSettled(requests);
+    return results.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
   }
 
   async getCandles(period: ChartPeriod, limit = 120): Promise<MarketCandle[]> {
+    return this.getCandlesForInstrument("BTC-USDT", period, limit);
+  }
+
+  async getCandlesForInstrument(
+    instrument: MarketInstrument,
+    period: ChartPeriod,
+    limit = 120,
+  ): Promise<MarketCandle[]> {
+    const pair = getKrakenPair(instrument);
+    if (!pair) throw new Error(`Unsupported Kraken instrument: ${instrument}`);
     const url = new URL("/0/public/OHLC", KRAKEN_BASE_URL);
-    url.searchParams.set("pair", "XBTUSDT");
+    url.searchParams.set("pair", pair);
     url.searchParams.set("interval", String(toKrakenInterval(period)));
     return normalizeKrakenCandles(await this.request(url)).slice(-limit);
   }

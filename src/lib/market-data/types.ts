@@ -19,6 +19,18 @@ export type LiveMarketResponse<T> = {
   source: LiveMarketSource;
 };
 
+export type MarketOverviewItem = MarketTicker & {
+  symbol: MarketSymbol;
+  spark: number[];
+  source: LiveMarketSource;
+};
+
+export type MarketOverviewResponse = {
+  data: MarketOverviewItem[];
+  source: LiveMarketSource | "mixed";
+  updatedAt: number;
+};
+
 export type MarketTicker = {
   instrument: MarketInstrument;
   last: number;
