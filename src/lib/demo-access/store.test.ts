@@ -38,6 +38,9 @@ describe("durable demo safety state contract", () => {
 
     await expect(store.getOrderOwner("271828")).resolves.toEqual({ sessionId: "session-a", clOrdId: "apxa123" });
     await expect(store.countSessionOpenOrders("session-a")).resolves.toBe(1);
+    await store.markOrderClosed("271828");
+    await expect(store.countSessionOpenOrders("session-a")).resolves.toBe(0);
+    await expect(store.getOrderOwner("271828")).resolves.toEqual({ sessionId: "session-a", clOrdId: "apxa123" });
     await store.removeOrderOwner("271828");
     await expect(store.getOrderOwner("271828")).resolves.toBeNull();
   });

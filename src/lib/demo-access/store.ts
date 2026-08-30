@@ -13,6 +13,7 @@ export interface DemoSafetyStore {
   saveIdempotencyResponse(key: string, response: unknown): Promise<void>;
   saveOrderOwner(ordId: string, owner: OrderOwner, ttlSeconds: number): Promise<void>;
   getOrderOwner(ordId: string): Promise<OrderOwner | null>;
+  markOrderClosed(ordId: string): Promise<void>;
   removeOrderOwner(ordId: string): Promise<void>;
   countSessionOpenOrders(sessionId: string): Promise<number>;
 }
@@ -24,6 +25,7 @@ export class MemoryDemoSafetyStore implements DemoSafetyStore {
   private readonly rates = new Map<string, Expiring<number>>();
   private readonly idempotency = new Map<string, Expiring<IdempotencyRecord>>();
   private readonly owners = new Map<string, Expiring<OrderOwner>>();
+  private readonly openOrderIds = new Set<string>();
 
   constructor(private readonly now: () => number = Date.now) {}
 
@@ -60,6 +62,7 @@ export class MemoryDemoSafetyStore implements DemoSafetyStore {
 
   async saveOrderOwner(ordId: string, owner: OrderOwner, ttlSeconds: number): Promise<void> {
     this.owners.set(ordId, { value: owner, expiresAt: this.now() + ttlSeconds * 1000 });
+    this.openOrderIds.add(ordId);
   }
 
   async getOrderOwner(ordId: string): Promise<OrderOwner | null> {
@@ -73,10 +76,15 @@ export class MemoryDemoSafetyStore implements DemoSafetyStore {
 
   async removeOrderOwner(ordId: string): Promise<void> {
     this.owners.delete(ordId);
+    this.openOrderIds.delete(ordId);
+  }
+
+  async markOrderClosed(ordId: string): Promise<void> {
+    this.openOrderIds.delete(ordId);
   }
 
   async countSessionOpenOrders(sessionId: string): Promise<number> {
-    const owners = await Promise.all([...this.owners.keys()].map((ordId) => this.getOrderOwner(ordId)));
+    const owners = await Promise.all([...this.openOrderIds].map((ordId) => this.getOrderOwner(ordId)));
     return owners.filter((owner) => owner?.sessionId === sessionId).length;
   }
 }
@@ -126,6 +134,11 @@ export class RedisDemoSafetyStore implements DemoSafetyStore {
   async removeOrderOwner(ordId: string): Promise<void> {
     const owner = await this.getOrderOwner(ordId);
     await this.redis.del(`apx:owner:${ordId}`);
+    if (owner) await this.redis.srem(`apx:session-orders:${owner.sessionId}`, ordId);
+  }
+
+  async markOrderClosed(ordId: string): Promise<void> {
+    const owner = await this.getOrderOwner(ordId);
     if (owner) await this.redis.srem(`apx:session-orders:${owner.sessionId}`, ordId);
   }
 
