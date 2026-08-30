@@ -1,4 +1,4 @@
-import type { ChartPeriod, MarketCandle, MarketTicker } from "./types";
+import type { ChartPeriod, MarketCandle, MarketInstrument, MarketTicker } from "./types";
 
 const DEFAULT_OKX_BASE_URL = "https://openapi.okx.com";
 
@@ -40,17 +40,16 @@ function getSuccessfulData(payload: unknown, errorMessage: string): unknown[] {
   return envelope.data;
 }
 
-export function normalizeOkxTicker(payload: unknown): MarketTicker {
-  const [rawTicker] = getSuccessfulData(payload, "Invalid OKX ticker payload");
+function normalizeTickerRow(rawTicker: unknown, instrument: MarketInstrument): MarketTicker {
   if (!rawTicker || typeof rawTicker !== "object") {
     throw new Error("Invalid OKX ticker payload");
   }
 
   const ticker = rawTicker as Record<string, unknown>;
-  if (ticker.instId !== "BTC-USDT") throw new Error("Invalid OKX ticker payload");
+  if (ticker.instId !== instrument) throw new Error("Invalid OKX ticker payload");
 
   return {
-    instrument: "BTC-USDT",
+    instrument,
     last: parseFiniteNumber(ticker.last, "Invalid OKX ticker payload"),
     open24h: parseFiniteNumber(ticker.open24h, "Invalid OKX ticker payload"),
     high24h: parseFiniteNumber(ticker.high24h, "Invalid OKX ticker payload"),
@@ -58,6 +57,25 @@ export function normalizeOkxTicker(payload: unknown): MarketTicker {
     volume24h: parseFiniteNumber(ticker.vol24h, "Invalid OKX ticker payload"),
     timestamp: parseFiniteNumber(ticker.ts, "Invalid OKX ticker payload"),
   };
+}
+
+export function normalizeOkxTicker(payload: unknown, instrument: MarketInstrument = "BTC-USDT"): MarketTicker {
+  const [rawTicker] = getSuccessfulData(payload, "Invalid OKX ticker payload");
+  return normalizeTickerRow(rawTicker, instrument);
+}
+
+export function normalizeOkxTickers(payload: unknown, instruments: MarketInstrument[]): MarketTicker[] {
+  const rows = getSuccessfulData(payload, "Invalid OKX ticker payload");
+  const byInstrument = new Map(rows.flatMap((row) => {
+    if (!row || typeof row !== "object") return [];
+    const instrument = (row as Record<string, unknown>).instId;
+    return typeof instrument === "string" ? [[instrument, row] as const] : [];
+  }));
+
+  return instruments.flatMap((instrument) => {
+    const row = byInstrument.get(instrument);
+    return row ? [normalizeTickerRow(row, instrument)] : [];
+  });
 }
 
 export function normalizeOkxCandles(payload: unknown): MarketCandle[] {
@@ -94,15 +112,33 @@ export class OkxMarketAdapter {
   ) {}
 
   async getTicker(): Promise<MarketTicker> {
+    return this.getTickerForInstrument("BTC-USDT");
+  }
+
+  async getTickerForInstrument(instrument: MarketInstrument): Promise<MarketTicker> {
     const url = new URL("/api/v5/market/ticker", this.baseUrl);
-    url.searchParams.set("instId", "BTC-USDT");
+    url.searchParams.set("instId", instrument);
     const payload = await this.request(url);
-    return normalizeOkxTicker(payload);
+    return normalizeOkxTicker(payload, instrument);
+  }
+
+  async getTickers(instruments: MarketInstrument[]): Promise<MarketTicker[]> {
+    const url = new URL("/api/v5/market/tickers", this.baseUrl);
+    url.searchParams.set("instType", "SPOT");
+    return normalizeOkxTickers(await this.request(url), instruments);
   }
 
   async getCandles(period: ChartPeriod, limit = 120): Promise<MarketCandle[]> {
+    return this.getCandlesForInstrument("BTC-USDT", period, limit);
+  }
+
+  async getCandlesForInstrument(
+    instrument: MarketInstrument,
+    period: ChartPeriod,
+    limit = 120,
+  ): Promise<MarketCandle[]> {
     const url = new URL("/api/v5/market/candles", this.baseUrl);
-    url.searchParams.set("instId", "BTC-USDT");
+    url.searchParams.set("instId", instrument);
     url.searchParams.set("bar", toOkxBar(period));
     url.searchParams.set("limit", String(limit));
     const payload = await this.request(url);
