@@ -1,0 +1,273 @@
+@import "tailwindcss";
+
+@theme {
+  --color-base: #0b0e11;
+  --color-surface: #111417;
+  --color-surface-raised: #171b1f;
+  --color-surface-high: #20262b;
+  --color-line: #2a3036;
+  --color-foreground: #e8ece9;
+  --color-muted: #8f9c95;
+  --color-primary: #44e092;
+  --color-paper: #02c076;
+  --color-danger: #f84960;
+  --color-warning: #f0b90b;
+  --radius-card: 0.875rem;
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+}
+
+@layer base {
+  * { @apply box-border; }
+  html { @apply bg-[#090b0d]; }
+  body { @apply m-0 bg-[#090b0d] font-sans text-foreground; background-image: radial-gradient(circle at 50% -10%, #1a2f26 0, transparent 34%); }
+  button, input { font: inherit; }
+  button, a { -webkit-tap-highlight-color: transparent; }
+  button { @apply text-inherit; }
+  a { @apply text-inherit no-underline; }
+  h2, h3, p { @apply mt-0; }
+  h2 { @apply text-[26px] tracking-[-0.04em]; }
+  h3 { @apply text-[16px]; }
+}
+
+@layer components {
+  .topbar { @apply relative flex h-[78px] items-center justify-between gap-3; }
+  .topbar h1 { @apply m-0 text-xl leading-[1.1]; }
+  .brand-name { @apply text-lg tracking-[-0.02em]; }
+  .brand-mark { @apply grid size-[34px] place-items-center rounded-[10px] font-black text-[#05130c] shadow-[0_0_24px_#02c07638]; background: linear-gradient(145deg, var(--color-primary), var(--color-paper)); }
+  .eyebrow { @apply mt-1 text-[10px] font-bold tracking-[0.14em] text-muted; }
+  .paper-badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-primary/20 bg-primary/[0.07] px-[9px] py-[7px] font-mono text-[9px] font-bold tracking-[0.08em] text-primary; }
+  .paper-badge i { @apply size-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)]; }
+  .icon-button { @apply grid size-[38px] cursor-pointer place-items-center rounded-full border-0 bg-transparent text-muted hover:bg-surface-high hover:text-foreground; }
+  .icon-button svg { @apply size-[21px]; }
+  .row { @apply flex items-center; }
+  .between { @apply justify-between; }
+  .gap-10 { @apply gap-2.5; }
+  .gap-12 { @apply gap-3; }
+  .block { @apply block; }
+  .mono { @apply font-mono tracking-[-0.035em]; }
+  .muted { @apply text-muted; }
+  .positive { @apply !text-primary; }
+  .negative, .danger { @apply !text-danger; }
+  .warning { @apply text-warning; }
+
+  .hero-intro { @apply flex items-end justify-between py-[18px] pb-3.5; }
+  .hero-intro h2 { @apply mt-1.5 mb-0 max-w-[270px] text-[27px]; }
+  .search { @apply mb-[26px] flex h-[50px] items-center gap-2.5 rounded-[13px] border border-line bg-surface-raised px-3.5; }
+  .search svg { @apply w-5 text-muted; }
+  .search input { @apply w-full border-0 bg-transparent text-foreground outline-0; }
+  .section-title { @apply my-3 mt-6 flex items-center justify-between; }
+  .section-title h3 { @apply m-0; }
+  .section-title > a { @apply text-xs text-primary; }
+  .favorite-grid { @apply grid grid-cols-1 gap-2.5; }
+  .favorite-card { @apply rounded-card border border-line p-3.5; background: linear-gradient(145deg, #181e21, #121619); }
+  .favorite-card strong { @apply text-sm; }
+  .favorite-card .muted { @apply mt-0.5 text-[11px]; }
+  .favorite-price { @apply mt-[13px] mb-[5px] text-lg font-bold; }
+  .asset-mark { @apply grid shrink-0 place-items-center rounded-full border font-black text-[15px] text-white; background: color-mix(in srgb, var(--asset-color) 28%, #151a1c); border-color: color-mix(in srgb, var(--asset-color) 55%, transparent); box-shadow: inset 0 0 14px color-mix(in srgb, var(--asset-color) 22%, transparent); }
+  .change { @apply inline-flex items-center gap-0.5 font-mono text-[11px] font-bold; }
+  .change svg { @apply w-3; }
+  .sparkline { @apply block h-[38px] w-24 overflow-visible; }
+  .sparkline.large { @apply h-[150px] w-full; }
+  .chip-row { @apply flex gap-2 overflow-auto pb-2.5; scrollbar-width: none; }
+  .chip { @apply whitespace-nowrap rounded-full border border-line bg-surface px-3.5 py-2 text-xs text-muted; }
+  .chip.active { @apply border-primary bg-primary font-extrabold text-[#04110a]; }
+  .market-list { @apply mx-[-16px] mt-1.5; }
+  .table-head, .market-row { @apply grid grid-cols-[minmax(130px,1fr)_96px_minmax(110px,.8fr)] items-center px-4; }
+  .table-head { @apply h-[42px] border-b border-line text-[10px] uppercase tracking-[0.09em] text-muted; }
+  .table-head span:last-child { @apply col-start-2 col-end-4 text-right; }
+  .market-row { @apply min-h-[72px] border-b border-[#252a2f] hover:bg-[#151a1e]; }
+  .market-row strong { @apply text-[13px]; }
+  .market-row .muted { @apply mt-[3px] text-[10px]; }
+  .market-price { @apply text-right; }
+  .market-price .change { @apply mt-1.5 flex justify-end; }
+  .empty { @apply flex flex-col items-center gap-[7px] p-[42px] text-muted; }
+  .empty svg { @apply size-8; }
+
+  .quote-card { @apply flex items-end justify-between rounded-card border border-line p-4; background: linear-gradient(145deg, #18201d, #121619); }
+  .quote-price { @apply my-[7px] text-[25px] font-extrabold; }
+  .quote-stats { @apply grid gap-[7px] text-right; }
+  .quote-stats span { @apply grid; }
+  .quote-stats i, .order-grid i { @apply text-[9px] not-italic uppercase text-muted; }
+  .quote-stats b { @apply text-[10px]; }
+  .chart-card, .trade-panel { @apply mt-3 rounded-card border border-line bg-surface p-3.5; }
+  .time-tabs { @apply flex gap-1; }
+  .time-tabs button, .order-type button { @apply rounded-md border-0 bg-transparent px-[9px] py-1.5 text-[11px] text-muted; }
+  .time-tabs button.active, .order-type button.active { @apply bg-surface-high text-primary; }
+  .chart-wrap { @apply relative h-[168px] overflow-hidden pt-4; background: repeating-linear-gradient(to bottom, transparent 0, transparent 39px, #263029 40px); }
+  .chart-wrap::after { content: ""; @apply pointer-events-none absolute inset-x-0 bottom-0 h-[70%]; background: linear-gradient(to bottom, #44e0921f, transparent); clip-path: polygon(0 82%,8% 72%,16% 78%,24% 60%,34% 66%,44% 45%,53% 51%,64% 30%,74% 36%,86% 11%,100% 20%,100% 100%,0 100%); }
+  .chart-price-label { @apply absolute top-[26px] right-[3px] rounded bg-[#123328] px-1.5 py-1 font-mono text-[10px] font-bold text-primary; }
+  .chart-axis { @apply flex justify-between font-mono text-[9px] text-muted; }
+  .market-loading { @apply grid gap-3; }
+  .market-skeleton { @apply animate-pulse rounded-card border border-line bg-surface-raised; }
+  .market-skeleton.quote { @apply h-[116px]; }
+  .market-skeleton.chart { @apply h-[278px]; }
+  .market-source { @apply rounded-full border border-primary/20 bg-primary/[0.06] px-2 py-1 font-mono text-[8px] font-bold tracking-[0.06em] text-primary; }
+  .market-source.backup { @apply border-[#6ea8fe]/25 bg-[#6ea8fe]/[0.07] text-[#8cbaff]; }
+  .market-source.fallback { @apply border-warning/20 bg-warning/[0.06] text-warning; }
+  .live-chart-card { @apply mx-[-16px] overflow-hidden rounded-none border-x-0 p-0 pt-2; }
+  .chart-toolbar { @apply relative z-10 px-4 pb-1; }
+  .candlestick-chart { width: 100%; height: clamp(320px, 44vh, 420px); touch-action: pan-y; }
+  .chart-refreshing { @apply font-mono text-[9px] text-primary; }
+  .market-error { @apply mx-4 mt-1 mb-3 flex items-center gap-2 rounded-lg border border-warning/20 bg-warning/[0.05] px-2.5 py-2 text-[9px] leading-normal text-[#c9c1a1]; }
+  .market-error svg { @apply size-4 shrink-0 text-warning; }
+  .market-error span { @apply flex-1; }
+  .market-error button { @apply shrink-0 rounded-md border border-warning/30 bg-transparent px-2 py-1 text-[9px] font-bold text-warning; }
+  .segmented { @apply grid grid-cols-2 rounded-[10px] bg-[#0c0f11] p-1; }
+  .segmented button { @apply rounded-lg border-0 bg-transparent p-[11px] font-extrabold text-muted; }
+  .segmented .buy.active { @apply bg-[#12362a] text-primary; }
+  .segmented .sell.active { @apply bg-[#3a1920] text-danger; }
+  .order-type { @apply mt-[13px] mb-2 flex; }
+  .field { @apply mt-[11px] block; }
+  .field > span { @apply mx-[3px] mt-0 mb-1.5 block text-[10px] text-muted; }
+  .field > div { @apply flex overflow-hidden rounded-[10px] border border-line bg-[#0d1012]; }
+  .field input { @apply h-12 w-full border-0 bg-transparent px-3 font-mono text-foreground outline-0; }
+  .field b { @apply flex items-center px-3 text-[11px]; }
+  .percent-row { @apply mt-[9px] grid grid-cols-4 gap-1.5; }
+  .percent-row button { @apply rounded-[7px] border border-line bg-surface-raised p-[7px] text-[10px] text-muted; }
+  .order-summary { @apply mx-0.5 my-4 grid gap-2 text-[11px] text-muted; }
+  .order-summary span { @apply flex justify-between; }
+  .order-summary b { @apply text-foreground; }
+  .primary-button, .secondary-button { @apply flex min-h-[50px] w-full cursor-pointer items-center justify-center gap-2 rounded-[11px] border-0 font-extrabold; }
+  .primary-button { @apply bg-paper text-[#04120b] shadow-[0_8px_24px_#02c0761f]; }
+  .danger-button { @apply bg-danger text-[#180307]; }
+  .secondary-button { @apply mt-[9px] border border-line bg-surface-raised text-foreground; }
+  .primary-button svg { @apply w-[18px]; }
+  .safety-note { @apply mx-[3px] mt-2.5 mb-0 flex items-start gap-[7px] text-[10px] leading-normal text-muted; }
+  .safety-note svg { @apply w-4 shrink-0 text-primary; }
+  .orderbook > div { @apply grid grid-cols-3 px-[3px] py-[7px] text-right font-mono text-[10px]; }
+  .orderbook > div span:first-child, .orderbook > div b { @apply text-left; }
+  .orderbook > div:first-child { @apply border-b border-line font-sans text-muted; }
+  .orderbook .sell b { @apply text-danger; }
+  .orderbook .buy b { @apply text-primary; }
+
+  .modal-page { @apply mx-auto max-w-[460px]; }
+  .confirm-hero { @apply px-3 pt-[25px] pb-[15px] text-center; }
+  .security-icon { @apply mx-auto mt-0 mb-3.5 grid size-[58px] place-items-center rounded-[18px] border border-primary/20 bg-primary/[0.07] text-primary; }
+  .security-icon.small { @apply m-0 size-[42px] rounded-xl; }
+  .security-icon svg { @apply size-[30px]; }
+  .confirm-hero h2 { @apply mb-2 text-2xl; }
+  .confirm-hero p, .wallet-copy { @apply text-xs leading-relaxed text-muted; }
+  .confirm-card { @apply rounded-2xl border border-line bg-surface-raised p-4; }
+  .asset-swap { @apply my-[18px] grid grid-cols-[1fr_24px_1fr] items-center gap-2 border-y border-line py-4; }
+  .asset-swap > div { @apply flex items-center gap-2; }
+  .asset-swap small { @apply mb-1 block text-[9px] text-muted; }
+  .asset-swap strong { @apply text-[11px]; }
+  .asset-swap > svg { @apply text-muted; }
+  .detail-list { @apply grid gap-[13px]; }
+  .detail-list > span { @apply flex items-center justify-between text-[11px] text-muted; }
+  .detail-list b { @apply text-foreground; }
+  .warning-box { @apply my-3 flex items-start gap-2.5 rounded-[11px] border border-warning/20 bg-warning/[0.06] p-3 text-[11px] leading-normal text-warning; }
+  .warning-box svg { @apply w-5 shrink-0; }
+  .warning-box span { @apply text-[#c9c1a1]; }
+  .warning-box strong { @apply block text-warning; }
+  .warning-box.success { @apply border-primary/20 bg-primary/[0.06] text-primary; }
+  .warning-box.success span { @apply text-[#a8c5b7]; }
+  .warning-box.success strong { @apply text-primary; }
+  .result-screen { @apply flex min-h-[90dvh] flex-col items-center justify-center p-[30px] text-center; }
+  .success-orb { @apply mb-[22px] grid size-[84px] place-items-center rounded-full bg-primary text-[#062216] shadow-[0_0_60px_#44e09242]; }
+  .success-orb svg { @apply size-[42px]; }
+  .result-screen .paper-badge { @apply mb-[15px]; }
+  .result-screen h1 { @apply mt-0 mb-[9px] text-[27px]; }
+  .result-screen > p { @apply text-[13px] leading-relaxed text-muted; }
+  .receipt { @apply mt-3 mb-5 grid w-full gap-3.5 rounded-card border border-line bg-surface-raised p-4; }
+  .receipt span { @apply flex justify-between text-[11px] text-muted; }
+  .receipt b { @apply text-foreground; }
+
+  .page-actions { @apply mt-1 mb-[18px] flex items-center gap-2; }
+  .tabs { @apply grid flex-1 grid-cols-3 gap-1 rounded-[11px] bg-surface-raised p-1; }
+  .tabs button { @apply rounded-lg border-0 bg-transparent px-[5px] py-[9px] text-[10px] text-muted; }
+  .tabs button.active { @apply bg-surface-high font-bold text-foreground; }
+  .orders-stack { @apply grid gap-2.5; }
+  .order-card { @apply rounded-card border border-line bg-surface p-[15px]; }
+  .order-card .muted { @apply text-[10px]; }
+  .side-tag { @apply rounded-[5px] px-1.5 py-[5px] font-mono text-[9px] font-extrabold; }
+  .side-tag.buy { @apply bg-primary/[0.07] text-primary; }
+  .side-tag.sell { @apply bg-danger/[0.07] text-danger; }
+  .status { @apply rounded-full bg-surface-high px-[7px] py-[5px] font-mono text-[9px] font-bold text-muted; }
+  .status.open { @apply text-warning; }
+  .status.filled { @apply text-primary; }
+  .order-grid { @apply mt-[17px] grid grid-cols-[1fr_1.2fr_1fr] gap-[7px]; }
+  .order-grid span { @apply grid gap-[5px]; }
+  .order-grid b { @apply text-[10px]; }
+  .text-button { @apply border-0 bg-transparent pt-3 text-[10px] font-bold; }
+  .info-panel, .siwe-note { @apply mt-[18px] flex gap-3 rounded-xl border border-line bg-surface p-3.5; }
+  .info-panel svg, .siwe-note svg { @apply w-[22px] shrink-0 text-primary; }
+  .info-panel strong, .siwe-note strong { @apply block text-[11px]; }
+  .info-panel span, .siwe-note span { @apply mt-1 block text-[10px] leading-normal text-muted; }
+
+  .balance-card { @apply relative overflow-hidden rounded-[18px] border border-[#314038] p-5; background: radial-gradient(circle at 90% 0, #44e0921b, transparent 40%), linear-gradient(145deg, #1b2420, #111618); }
+  .balance-card h2 { @apply mt-3 mb-[5px] text-[34px]; }
+  .balance-card > .muted { @apply ml-2 text-[11px]; }
+  .balance-card .sparkline { @apply mt-2 h-[72px]; }
+  .quick-actions { @apply my-3.5 grid grid-cols-3 gap-2.5; }
+  .quick-actions button, .quick-actions a { @apply flex min-h-[72px] flex-col items-center justify-center gap-[7px] rounded-xl border border-line bg-surface-raised text-[10px]; }
+  .quick-actions svg { @apply size-[21px] text-primary; }
+  .allocation-bar { @apply mb-3 flex h-[7px] gap-0.5 overflow-hidden rounded-full; }
+  .allocation-bar i { @apply h-full; }
+  .asset-list, .activity-list { @apply overflow-hidden rounded-card border border-line bg-surface; }
+  .asset-row { @apply flex items-center justify-between border-b border-line p-3.5 last:border-0; }
+  .asset-row > div:last-child { @apply text-right; }
+  .asset-row strong { @apply text-xs; }
+  .asset-row small { @apply mt-1 text-[9px]; }
+  .asset-balance { @apply py-6 text-center; }
+  .asset-balance .asset-mark { @apply mx-auto; }
+  .asset-balance h2 { @apply mt-3.5 mb-[3px] text-[29px]; }
+  .asset-balance p { @apply mb-2 text-[13px] text-muted; }
+  .performance h3 { @apply my-1 text-[19px]; }
+  .activity-row { @apply grid grid-cols-[38px_1fr_auto] items-center gap-2.5 border-b border-line p-[13px] last:border-0; }
+  .activity-icon, .setting-icon { @apply grid size-9 place-items-center rounded-[10px] bg-primary/[0.06] text-primary; }
+  .activity-row strong, .activity-row b { @apply text-[11px]; }
+  .activity-row small { @apply mt-1 text-[9px]; }
+
+  .connect-backdrop { @apply mx-[-16px] flex min-h-dvh items-center bg-[#090c0e] px-4 py-10; background-image: radial-gradient(circle at 50% 10%, #153429, transparent 42%); }
+  .wallet-modal { @apply mx-auto w-full max-w-[430px] rounded-[20px] border border-[#30373b] bg-[#111518f5] p-[18px] shadow-[0_30px_90px_#0009]; }
+  .wallet-modal h1 { @apply m-0 text-xl; }
+  .wallet-copy { @apply my-[18px]; }
+  .wallet-options { @apply grid gap-2; }
+  .wallet-options button { @apply grid h-[58px] grid-cols-[34px_1fr_22px] items-center gap-[11px] rounded-xl border border-line bg-surface-raised px-3 text-left hover:border-primary/40 hover:bg-primary/[0.04]; }
+  .wallet-options button.selected { @apply border-primary/40 bg-primary/[0.04]; }
+  .wallet-options img { @apply size-8 object-contain; }
+  .wallet-options svg { @apply text-muted; }
+  .wallet-options button.selected svg { @apply text-primary; }
+  .legal { @apply m-3.5 text-center text-[9px] leading-normal text-muted; }
+  .profile-card { @apply grid grid-cols-[58px_1fr_38px] items-center gap-3 rounded-2xl border border-line p-4; background: linear-gradient(145deg, #19201d, #121619); }
+  .profile-avatar { @apply grid size-[58px] place-items-center rounded-[18px] bg-primary/[0.07] text-primary; }
+  .profile-avatar svg { @apply size-[42px]; }
+  .profile-card h2 { @apply mt-0 mb-[5px] text-[17px]; }
+  .address { @apply flex gap-1 border-0 bg-transparent p-0 font-mono text-[9px] text-muted; }
+  .address svg { @apply w-[11px]; }
+  .verified { @apply mt-1.5 flex items-center gap-1 text-[9px] text-primary; }
+  .settings-section { @apply mt-[5px]; }
+  .settings-section h3 { @apply mx-[3px] mt-6 mb-[9px] text-[10px] uppercase tracking-[0.1em] text-muted; }
+  .setting-row { @apply grid min-h-16 grid-cols-[40px_1fr_auto] items-center gap-2.5 border-b border-line bg-surface px-[11px] py-2; }
+  .setting-row:nth-child(2) { @apply rounded-t-xl; }
+  .setting-row:last-child { @apply rounded-b-xl border-b-0; }
+  .setting-row:only-of-type { @apply rounded-xl; }
+  .setting-row strong { @apply text-[11px]; }
+  .setting-row small { @apply mt-1 text-[9px]; }
+  .setting-row > svg { @apply w-[18px] text-muted; }
+  .toggle { @apply h-[22px] w-[38px] rounded-full border-0 bg-[#343a3e] p-0.5; }
+  .toggle i { @apply block size-[18px] rounded-full bg-[#87918b] transition-transform; }
+  .toggle.on { @apply bg-[#1f5b45]; }
+  .toggle.on i { @apply translate-x-4 bg-primary; }
+  .select-button { @apply flex items-center gap-[3px] border-0 bg-transparent text-[10px] text-primary; }
+  .signout-button { @apply mt-5 flex items-center justify-center gap-2 rounded-[11px] border border-danger/20 p-[13px] text-[11px] text-danger; }
+}
+
+@media (max-width: 360px) {
+  .paper-badge { @apply p-1.5 text-[8px]; }
+  .market-row { grid-template-columns: minmax(116px,1fr) 72px minmax(92px,.8fr); }
+  .sparkline { @apply w-[72px]; }
+  .quote-stats { @apply hidden; }
+}
+
+@media (min-width: 700px) {
+  .connect-backdrop { min-height: calc(100dvh - 56px); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .favorite-card, .market-row, .primary-button, .quick-actions a, .quick-actions button { @apply transition-[transform,border-color] duration-200; }
+  .favorite-card:hover { @apply -translate-y-0.5 border-[#44504a]; }
+  .primary-button:active, .quick-actions a:active, .quick-actions button:active { @apply scale-[0.98]; }
+}

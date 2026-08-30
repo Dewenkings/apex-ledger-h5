@@ -1,0 +1,82 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { TradeMarketPanel } from "./trade-market-panel";
+
+const ticker = {
+  instrument: "BTC-USDT",
+  last: 68342.1,
+  open24h: 66455.6,
+  high24h: 69180,
+  low24h: 65911.4,
+  volume24h: 18743.2,
+  timestamp: 1788048000000,
+};
+
+const candles = [
+  { time: 1788044400, open: 68000, high: 68400, low: 67900, close: 68200, volume: 42, confirmed: true },
+  { time: 1788048000, open: 68200, high: 68500, low: 68100, close: 68342.1, volume: 38, confirmed: false },
+];
+
+function okMarketFetch(input: RequestInfo | URL): Promise<Response> {
+  const url = String(input);
+  return Promise.resolve(Response.json({
+    source: "okx",
+    data: url.includes("/ticker") ? ticker : candles,
+  }));
+}
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe("TradeMarketPanel", () => {
+  it("loads BTC-USDT public data with 1D selected by default", async () => {
+    vi.stubGlobal("fetch", vi.fn(okMarketFetch));
+
+    render(<TradeMarketPanel />);
+
+    expect(screen.getByRole("status", { name: "正在加载实时行情" })).toBeInTheDocument();
+    expect(await screen.findByText("68,342.10")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "1D" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("OKX LIVE")).toBeInTheDocument();
+  });
+
+  it("requests and selects the candle period the user taps", async () => {
+    const fetcher = vi.fn(okMarketFetch);
+    vi.stubGlobal("fetch", fetcher);
+    render(<TradeMarketPanel />);
+    await screen.findByText("68,342.10");
+
+    fireEvent.click(screen.getByRole("button", { name: "4H" }));
+
+    expect(screen.getByRole("button", { name: "4H" })).toHaveAttribute("aria-pressed", "true");
+    await waitFor(() => {
+      expect(fetcher.mock.calls.some(([url]) => String(url) === "/api/market/candles?period=4H")).toBe(true);
+    });
+  });
+
+  it("labels fallback data and retries failed public requests", async () => {
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      void input;
+      return new Response("unavailable", { status: 502 });
+    });
+    vi.stubGlobal("fetch", fetcher);
+    render(<TradeMarketPanel />);
+
+    expect(await screen.findByText("DEMO DATA")).toBeInTheDocument();
+    fetcher.mockImplementation(okMarketFetch);
+    fireEvent.click(screen.getByRole("button", { name: "重试实时行情" }));
+
+    expect(await screen.findByText("OKX LIVE")).toBeInTheDocument();
+  });
+
+  it("identifies Kraken when the backup real provider serves the market", async () => {
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => Promise.resolve(Response.json({
+      source: "kraken",
+      data: String(input).includes("/ticker") ? ticker : candles,
+    }))));
+
+    render(<TradeMarketPanel />);
+
+    expect(await screen.findByText("KRAKEN LIVE")).toBeInTheDocument();
+  });
+});
