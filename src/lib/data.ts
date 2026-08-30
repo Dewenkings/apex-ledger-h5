@@ -1,5 +1,7 @@
+import type { MarketSymbol } from "./market-data/types";
+
 export type Market = {
-  symbol: string;
+  symbol: MarketSymbol;
   name: string;
   price: number;
   change: number;
@@ -17,7 +19,7 @@ export const markets: Market[] = [
   { symbol: "ADA", name: "Cardano", price: 0.4521, change: -0.62, color: "#3468d4", icon: "A", category: "Layer 1", spark: [31, 29, 30, 26, 28, 24, 25, 21] },
   { symbol: "AVAX", name: "Avalanche", price: 36.92, change: 3.26, color: "#e84142", icon: "A", category: "Layer 1", spark: [13, 17, 16, 20, 23, 21, 27, 32] },
   { symbol: "DOT", name: "Polkadot", price: 7.14, change: 0.08, color: "#e6007a", icon: "●", category: "Layer 1", spark: [22, 23, 22, 24, 23, 24, 23, 24] },
-  { symbol: "MATIC", name: "Polygon", price: 0.714, change: -2.21, color: "#8247e5", icon: "M", category: "DeFi", spark: [33, 31, 29, 30, 26, 25, 22, 19] },
+  { symbol: "POL", name: "Polygon", price: 0.714, change: -2.21, color: "#8247e5", icon: "P", category: "DeFi", spark: [33, 31, 29, 30, 26, 25, 22, 19] },
 ];
 
 export const walletProviders = [
