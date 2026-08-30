@@ -54,7 +54,7 @@ describe("market-data Route Handlers", () => {
   it("returns a normalized public ticker with short shared caching", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(tickerPayload))));
 
-    const response = await getTicker();
+    const response = await getTicker(new Request("http://localhost/api/market/ticker?instrument=BTC-USDT"));
 
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("public, s-maxage=5, stale-while-revalidate=15");
@@ -72,7 +72,7 @@ describe("market-data Route Handlers", () => {
       ],
     }))));
 
-    const response = await getCandles(new Request("http://localhost/api/market/candles?period=4H"));
+    const response = await getCandles(new Request("http://localhost/api/market/candles?instrument=BTC-USDT&period=4H"));
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
@@ -88,7 +88,7 @@ describe("market-data Route Handlers", () => {
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
 
-    const response = await getCandles(new Request("http://localhost/api/market/candles?period=5m"));
+    const response = await getCandles(new Request("http://localhost/api/market/candles?instrument=BTC-USDT&period=5m"));
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({ error: "Unsupported chart period" });
@@ -98,7 +98,7 @@ describe("market-data Route Handlers", () => {
   it("maps an upstream failure to a sanitized 502 response", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response("unavailable", { status: 503 })));
 
-    const response = await getTicker();
+    const response = await getTicker(new Request("http://localhost/api/market/ticker?instrument=BTC-USDT"));
 
     expect(response.status).toBe(502);
     expect(await response.json()).toEqual({ error: "Market data temporarily unavailable" });
@@ -122,12 +122,46 @@ describe("market-data Route Handlers", () => {
       });
     }));
 
-    const response = await getTicker();
+    const response = await getTicker(new Request("http://localhost/api/market/ticker?instrument=BTC-USDT"));
 
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
       source: "kraken",
       data: { instrument: "BTC-USDT", last: 68342.1 },
     });
+  });
+
+  it("requests and returns the exact supported non-BTC instrument", async () => {
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      expect(url.searchParams.get("instId")).toBe("ETH-USDT");
+      return Response.json({
+        ...tickerPayload,
+        data: [{ ...tickerPayload.data[0], instId: "ETH-USDT", last: "3521.64" }],
+      });
+    });
+    vi.stubGlobal("fetch", fetcher);
+
+    const response = await getTicker(new Request("http://localhost/api/market/ticker?instrument=ETH-USDT"));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      source: "okx",
+      data: { instrument: "ETH-USDT", last: 3521.64 },
+    });
+  });
+
+  it("rejects missing or unsupported instruments before contacting providers", async () => {
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+
+    const missing = await getTicker(new Request("http://localhost/api/market/ticker"));
+    const unsupported = await getCandles(new Request("http://localhost/api/market/candles?instrument=DOGE-USDT&period=1D"));
+
+    expect(missing.status).toBe(400);
+    expect(await missing.json()).toEqual({ error: "Unsupported trading instrument" });
+    expect(unsupported.status).toBe(400);
+    expect(await unsupported.json()).toEqual({ error: "Unsupported trading instrument" });
+    expect(fetcher).not.toHaveBeenCalled();
   });
 });
