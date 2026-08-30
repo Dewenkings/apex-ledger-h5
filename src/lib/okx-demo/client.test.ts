@@ -29,7 +29,7 @@ const orderRow = {
 
 describe("OkxDemoClient", () => {
   it("signs a place-order request and always marks it as simulated trading", async () => {
-    const fetcher = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => Response.json({
+    const fetcher = vi.fn<typeof fetch>(async () => Response.json({
       code: "0",
       msg: "",
       data: [{ ordId: "271828", clOrdId: "apxabc123", sCode: "0", sMsg: "" }],
