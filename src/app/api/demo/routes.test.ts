@@ -137,7 +137,8 @@ describe("OKX Demo private REST routes", () => {
     expect(await response.json()).toEqual({ error: "safe message", code: category });
   });
 
-  it("fails closed with 503 when server credentials or Redis are unavailable", async () => {
+  it("fails closed with 503 and logs safe diagnostics when server credentials or Redis are unavailable", async () => {
+    const diagnostic = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const handlers = createOrdersHandlers(dependencies({
       getService: vi.fn(() => { throw new Error("secrets missing"); }),
     }));
@@ -146,6 +147,11 @@ describe("OKX Demo private REST routes", () => {
 
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({ error: "OKX Demo trading is unavailable", code: "demo_unavailable" });
+    expect(diagnostic).toHaveBeenCalledWith("Unexpected Demo API failure", {
+      name: "Error",
+      message: "secrets missing",
+    });
+    diagnostic.mockRestore();
   });
 
   it("returns only session-owned orders and fills plus explicitly shared virtual balance", async () => {

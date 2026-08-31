@@ -99,10 +99,22 @@ export function demoErrorResponse(error: unknown): Response {
     const status = error.category === "business_rejection" ? 422 : 502;
     return noStoreJson({ error: error.message, code: error.category }, status);
   }
+  console.error("Unexpected Demo API failure", safeDiagnostic(error));
   return noStoreJson(
     { error: "OKX Demo trading is unavailable", code: "demo_unavailable" },
     503,
   );
+}
+
+function safeDiagnostic(error: unknown): { name: string; message: string } {
+  if (!(error instanceof Error)) return { name: "UnknownError", message: "Non-Error value thrown" };
+  return {
+    name: error.name || "Error",
+    message: error.message
+      .replace(/(authorization:\s*bearer\s+)\S+/gi, "$1[redacted]")
+      .replace(/(rediss?:\/\/[^:]+:)[^@]+@/gi, "$1[redacted]@")
+      .slice(0, 500),
+  };
 }
 
 function readCookie(header: string | null, name: string): string | undefined {
