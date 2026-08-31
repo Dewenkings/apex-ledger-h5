@@ -7,6 +7,7 @@ export type AuthRateLimit = { allowed: boolean; remaining: number };
 
 export interface IdentityRepository {
   saveNonce(record: SiweNonceRecord, ttlSeconds: number): Promise<void>;
+  getNonce(nonce: string): Promise<SiweNonceRecord | null>;
   consumeNonce(nonce: string): Promise<SiweNonceRecord | null>;
   saveSession(session: WalletSession, ttlSeconds: number): Promise<void>;
   getSession(sessionId: string): Promise<WalletSession | null>;
@@ -29,6 +30,15 @@ export class MemoryIdentityRepository implements IdentityRepository {
     const existing = this.nonces.get(nonce);
     this.nonces.delete(nonce);
     return existing && existing.expiresAt > this.now() ? existing.value : null;
+  }
+
+  async getNonce(nonce: string): Promise<SiweNonceRecord | null> {
+    const existing = this.nonces.get(nonce);
+    if (!existing || existing.expiresAt <= this.now()) {
+      this.nonces.delete(nonce);
+      return null;
+    }
+    return existing.value;
   }
 
   async saveSession(session: WalletSession, ttlSeconds: number): Promise<void> {
@@ -72,6 +82,10 @@ export class RedisIdentityRepository implements IdentityRepository {
     if (!result) return null;
     if (typeof result === "string") return JSON.parse(result) as SiweNonceRecord;
     return result as SiweNonceRecord;
+  }
+
+  async getNonce(nonce: string): Promise<SiweNonceRecord | null> {
+    return this.redis.get<SiweNonceRecord>(`apx:siwe:nonce:${nonce}`);
   }
 
   async saveSession(session: WalletSession, ttlSeconds: number): Promise<void> {
