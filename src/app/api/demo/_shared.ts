@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { DEMO_SESSION_COOKIE, DEMO_VISITOR_COOKIE, verifyDemoSessionCookie, verifyDemoVisitorCookie, type DemoSession } from "@/lib/demo-access/session";
+import { DEMO_SESSION_COOKIE, DEMO_VISITOR_COOKIE, verifyDemoSessionCookie, verifyDemoVisitorCookie } from "@/lib/demo-access/session";
 import { createRedisDemoSafetyStore } from "@/lib/demo-access/store";
 import { createLiveMarketProviders, getTickerFromProviders } from "@/lib/market-data/market-service";
 import { OkxDemoClient, OkxDemoError } from "@/lib/okx-demo/client";

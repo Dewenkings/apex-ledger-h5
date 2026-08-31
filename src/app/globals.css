@@ -243,6 +243,23 @@
   .wallet-modal { @apply mx-auto w-full max-w-[430px] rounded-[20px] border border-[#30373b] bg-[#111518f5] p-[18px] shadow-[0_30px_90px_#0009]; }
   .wallet-modal h1 { @apply m-0 text-xl; }
   .wallet-copy { @apply my-[18px]; }
+  .wallet-intro { @apply py-7; }
+  .wallet-intro h2, .wallet-login-stage h2 { @apply mt-2 mb-0 text-[22px] leading-tight; }
+  .wallet-step { @apply font-mono text-[9px] font-bold tracking-[0.16em] text-primary; }
+  .wallet-identity { @apply my-[18px] grid grid-cols-[42px_1fr_22px] items-center gap-3 rounded-xl border border-line bg-surface-raised p-3; }
+  .wallet-identity > svg { @apply text-primary; }
+  .wallet-identity strong { @apply mt-1 block text-xs; }
+  .wallet-identity small { @apply mt-1 block text-[9px] text-muted; }
+  .wallet-identicon { @apply size-[42px] rounded-xl border border-primary/30; background: radial-gradient(circle at 70% 30%, #02c076 0 13%, transparent 14%), conic-gradient(from 20deg, #18392e, #02c076, #0d1713, #4bd8a0, #18392e); }
+  .wallet-login-stage { @apply rounded-2xl border border-line bg-[#0d1113] p-4; }
+  .wallet-login-stage > p { @apply mt-2 mb-4 text-[11px] leading-relaxed text-muted; }
+  .wallet-authenticated { @apply my-4 flex gap-3 rounded-2xl border border-primary/25 bg-primary/[0.07] p-4; }
+  .wallet-authenticated > svg { @apply size-6 shrink-0 text-primary; }
+  .wallet-authenticated strong { @apply block text-sm text-primary; }
+  .wallet-authenticated span { @apply mt-1 block text-[10px] leading-relaxed text-[#a8c5b7]; }
+  .wallet-disconnect { @apply mx-auto mt-4 block border-0 bg-transparent px-4 py-2 text-[10px] text-muted underline decoration-line underline-offset-4; }
+  .wallet-spinner { @apply animate-spin; }
+  .primary-button:disabled { @apply cursor-not-allowed opacity-60; }
   .wallet-options { @apply grid gap-2; }
   .wallet-options button { @apply grid h-[58px] grid-cols-[34px_1fr_22px] items-center gap-[11px] rounded-xl border border-line bg-surface-raised px-3 text-left hover:border-primary/40 hover:bg-primary/[0.04]; }
   .wallet-options button.selected { @apply border-primary/40 bg-primary/[0.04]; }

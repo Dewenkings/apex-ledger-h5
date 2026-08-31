@@ -1,30 +1,24 @@
 "use client";
-/* eslint-disable @next/next/no-img-element -- Preserve the supplied Stitch wallet assets without proxying them. */
-
 import Link from "next/link";
 import { useState } from "react";
 import {
   CaretDown, CaretRight, CheckCircle,
   Clock, Copy, Gear, Info, Lock,
   PaperPlaneTilt, Plus, Receipt, ShieldCheck, SignOut, SlidersHorizontal,
-  Swap, UserCircle, Wallet, X,
+  Swap, UserCircle, Wallet,
 } from "@phosphor-icons/react";
 import { AppShell } from "./app-shell";
 import { BrandHeader } from "./brand-header";
 import { AssetMark, Change, PaperBadge, Sparkline } from "./ui";
-import { markets, walletProviders } from "@/lib/data";
+import { markets } from "@/lib/data";
 export { TradeScreen } from "./trade/trade-screen";
 export { ConfirmScreen } from "./trade/confirm-screen";
 export { OrdersScreen } from "./trade/orders-screen";
 export { PortfolioScreen } from "./trade/portfolio-screen";
+export { ConnectWalletScreen } from "@/features/wallet/connect-wallet-screen";
 
 export function AssetDetailScreen() {
   return <AppShell><BrandHeader title="Bitcoin 详情" subtitle="ASSET DETAILS" back="/portfolio" /><section className="asset-balance"><AssetMark market={markets[0]} size={58} /><h2 className="mono">0.2964 BTC</h2><p className="mono">$20,258.34</p><Change value={4.18} /></section><section className="chart-card performance"><div className="section-title"><div><span className="muted">资产表现</span><h3 className="mono">+$812.42</h3></div><div className="time-tabs"><button>1D</button><button className="active">1W</button><button>1M</button></div></div><Sparkline points={[13, 18, 16, 25, 22, 31, 28, 39, 35, 47, 52, 49, 61]} large /><div className="chart-axis"><span>Mon</span><span>Wed</span><span>Fri</span><span>Sun</span></div></section><div className="quick-actions"><button><PaperPlaneTilt /><span>转出</span></button><button><Wallet /><span>接收</span></button><Link href="/trade/btc-usdt"><Swap /><span>交易</span></Link></div><section><div className="section-title"><h3>最近活动</h3><Link href="/orders">查看全部</Link></div><div className="activity-list">{[{ icon: <Plus />, name: "模拟买入", date: "今天 14:28", value: "+0.025 BTC", cls: "positive" }, { icon: <Swap />, name: "模拟兑换", date: "8月28日", value: "+0.041 BTC", cls: "positive" }, { icon: <PaperPlaneTilt />, name: "演示转出", date: "8月22日", value: "-0.010 BTC", cls: "negative" }].map((x) => <div className="activity-row" key={x.date}><span className="activity-icon">{x.icon}</span><div><strong>{x.name}</strong><small className="muted block">{x.date}</small></div><b className={`mono ${x.cls}`}>{x.value}</b></div>)}</div></section></AppShell>;
-}
-
-export function ConnectWalletScreen() {
-  const [selected, setSelected] = useState<string>();
-  return <AppShell hideNav><div className="connect-backdrop"><div className="wallet-modal"><div className="row between"><div className="row gap-10"><div className="security-icon small"><Wallet /></div><div><h1>连接钱包</h1><span className="eyebrow">SIGN IN WITH ETHEREUM</span></div></div><Link href="/markets" className="icon-button"><X /></Link></div><p className="wallet-copy">钱包只用于证明你拥有该地址并创建登录会话。不会请求转账授权，也不会产生 Gas。</p><div className="wallet-options">{walletProviders.map((wallet) => <button key={wallet.name} onClick={() => setSelected(wallet.name)} className={selected === wallet.name ? "selected" : ""}><img src={wallet.src} alt={`${wallet.name} logo`} /><strong>{wallet.name}</strong>{selected === wallet.name ? <CheckCircle weight="fill" /> : <CaretRight />}</button>)}</div>{selected && <div className="warning-box success"><CheckCircle /><span><strong>{selected} 已选中</strong>下一阶段接入 SIWE 后才会弹出消息签名。</span></div>}<div className="siwe-note"><ShieldCheck /><div><strong>安全登录，不是支付</strong><span>你将签署一段可读登录消息，不是链上交易。</span></div></div><p className="legal">继续即表示你同意演示版服务条款与隐私说明。本项目不托管资产。</p><Link href="/markets" className="secondary-button">稍后再说</Link></div></div></AppShell>;
 }
 
 export function SettingsScreen() {
