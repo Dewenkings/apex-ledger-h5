@@ -133,6 +133,7 @@ describe("OKX Demo private REST routes", () => {
     ["invalid_order", 400],
     ["idempotency_conflict", 409],
     ["rate_limited", 429],
+    ["global_demo_limit", 429],
   ] as const)("maps %s service errors to HTTP %s", async (category, status) => {
     const fakeService = service({
       place: vi.fn(async () => { throw new DemoOrderServiceError(category, "safe message"); }),
@@ -194,5 +195,18 @@ describe("OKX Demo private REST routes", () => {
 
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({ error: "not owned", code: "forbidden" });
+  });
+
+  it("ignores a forged cancellation instrument and delegates by server-owned order ID", async () => {
+    const fakeService = service();
+    const handlers = createCancelOrderHandlers(dependencies({ getService: vi.fn(() => fakeService) }));
+
+    const response = await handlers.POST(
+      mutation("/api/demo/orders/271828/cancel", { instrument: "SOL-USDT" }),
+      { params: Promise.resolve({ orderId: "271828" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(fakeService.cancelOwnedOrder).toHaveBeenCalledWith(session, "271828");
   });
 });

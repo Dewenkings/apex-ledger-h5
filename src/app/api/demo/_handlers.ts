@@ -41,11 +41,8 @@ export function createCancelOrderHandlers(dependencies: DemoApiDependencies = cr
   return { async POST(request: Request, context: CancelContext) {
     const originError = requireSameOrigin(request); if (originError) return originError;
     const session = await requireDemoSession(request, dependencies); if (session instanceof Response) return session;
-    const body = await readJsonObject(request);
-    const instrument = parseTradableInstrument(body && typeof body.instrument === "string" ? body.instrument : null);
-    if (!instrument) return noStoreJson({ error: "Unsupported trading instrument", code: "invalid_order" }, 400);
     const { orderId } = await context.params;
     if (!orderId || orderId.length > 64) return noStoreJson({ error: "Invalid order ID", code: "invalid_order" }, 400);
-    try { return noStoreJson(await dependencies.getService().cancelOwnedOrder(session, orderId, instrument)); } catch (error) { return demoErrorResponse(error); }
+    try { return noStoreJson(await dependencies.getService().cancelOwnedOrder(session, orderId)); } catch (error) { return demoErrorResponse(error); }
   } };
 }

@@ -4,17 +4,17 @@ import { DEMO_SESSION_COOKIE, DEMO_VISITOR_COOKIE, verifyDemoSessionCookie, veri
 import { createRedisDemoSafetyStore } from "@/lib/demo-access/store";
 import { createLiveMarketProviders, getTickerFromProviders } from "@/lib/market-data/market-service";
 import { OkxDemoClient, OkxDemoError } from "@/lib/okx-demo/client";
-import type { DemoBalance, DemoCancelReceipt, DemoFill, DemoOrder, DemoOrderReceipt } from "@/lib/okx-demo/contracts";
+import type { DemoBalance, DemoCancelReceipt, DemoFill, DemoOrderReceipt, DemoOrderSnapshot } from "@/lib/okx-demo/contracts";
 import { readOkxDemoConfig } from "@/lib/okx-demo/config";
 import { DemoOrderServiceError, OkxDemoOrderService } from "@/lib/okx-demo/order-service";
 import type { TradableInstrument } from "@/lib/trading/pairs";
 
 export type DemoTradingService = {
   place(session: DemoSession, input: unknown, requestId: string, clientIpKey: string): Promise<DemoOrderReceipt>;
-  listOrders(session: DemoSession): Promise<DemoOrder[]>;
+  listOrders(session: DemoSession): Promise<DemoOrderSnapshot[]>;
   listFills(session: DemoSession): Promise<DemoFill[]>;
   getSharedBalance(): Promise<DemoBalance>;
-  cancelOwnedOrder(session: DemoSession, ordId: string, instrument: TradableInstrument): Promise<DemoCancelReceipt>;
+  cancelOwnedOrder(session: DemoSession, ordId: string): Promise<DemoCancelReceipt>;
 };
 
 export type DemoApiDependencies = {
