@@ -138,13 +138,30 @@ export class OkxDemoOrderService {
     ]);
     const unique = new Map([...pending, ...history].map((order) => [order.ordId, order]));
     const visible: DemoOrder[] = [];
+    let ownersFound = 0;
+    let sessionMatches = 0;
+    let clientOrderMatches = 0;
     for (const order of unique.values()) {
       const owner = await this.store.getOrderOwner(order.ordId);
+      if (owner) ownersFound += 1;
+      if (owner?.sessionId === session.sessionId) sessionMatches += 1;
       if (owner?.sessionId !== session.sessionId || owner.clOrdId !== order.clOrdId) continue;
+      clientOrderMatches += 1;
       visible.push(order);
       if (order.status === "filled" || order.status === "canceled" || order.status === "rejected") {
         await this.store.markOrderClosed(order.ordId);
       }
+    }
+    if (visible.length === 0) {
+      console.info("Demo order visibility", {
+        pending: pending.length,
+        history: history.length,
+        unique: unique.size,
+        ownersFound,
+        sessionMatches,
+        clientOrderMatches,
+        visible: visible.length,
+      });
     }
     return visible.sort((left, right) => right.updatedAt - left.updatedAt);
   }

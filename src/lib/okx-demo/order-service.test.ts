@@ -136,4 +136,30 @@ describe("OkxDemoOrderService", () => {
       .rejects.toMatchObject({ category: "forbidden" });
     await expect(service.cancelOwnedOrder(session, "owned", "ETH-USDT")).resolves.toMatchObject({ canceled: true });
   });
+
+  it("logs non-sensitive order visibility counts for production diagnostics", async () => {
+    const store = new MemoryDemoSafetyStore(() => 1788048000000);
+    await store.saveOrderOwner("owned", { sessionId: session.sessionId, clOrdId: "expected-client-id" }, 300);
+    const client = gateway({
+      listPendingOrders: vi.fn(async () => [{ ...acceptedOrder, ordId: "owned", clOrdId: "different-client-id" }]),
+      listOrderHistory: vi.fn(async () => []),
+    });
+    const diagnostic = vi.spyOn(console, "info").mockImplementation(() => undefined);
+
+    try {
+      const service = new OkxDemoOrderService(client, store);
+      await expect(service.listOrders(session)).resolves.toEqual([]);
+      expect(diagnostic).toHaveBeenCalledWith("Demo order visibility", {
+        pending: 1,
+        history: 0,
+        unique: 1,
+        ownersFound: 1,
+        sessionMatches: 1,
+        clientOrderMatches: 0,
+        visible: 0,
+      });
+    } finally {
+      diagnostic.mockRestore();
+    }
+  });
 });
