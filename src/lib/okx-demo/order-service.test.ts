@@ -7,7 +7,7 @@ import type { DemoOrder } from "./contracts";
 import { OkxDemoError } from "./client";
 import { OkxDemoOrderService } from "./order-service";
 
-const session = { sessionId: "session-123", expiresAt: 1788051600000 };
+const session = { sessionId: "session-123", visitorId: "visitor-123", expiresAt: 1788051600000 };
 const input = {
   instrument: "ETH-USDT",
   side: "buy",

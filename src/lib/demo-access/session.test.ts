@@ -3,15 +3,18 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createDemoVisitorCookie,
   createDemoSessionCookie,
+  DEMO_VISITOR_COOKIE,
   matchesAccessCode,
+  verifyDemoVisitorCookie,
   verifyDemoSessionCookie,
 } from "./session";
 
 describe("controlled demo session", () => {
   it("creates a signed HTTP-only cookie without exposing the access code", () => {
     const cookie = createDemoSessionCookie(
-      { sessionId: "session-123", expiresAt: 1788051600000 },
+      { sessionId: "session-123", visitorId: "visitor-123", expiresAt: 1788051600000 },
       "session-secret",
       { secure: true, now: 1788048000000 },
     );
@@ -27,7 +30,7 @@ describe("controlled demo session", () => {
 
   it("verifies valid cookies and rejects tampering or expiry", () => {
     const cookie = createDemoSessionCookie(
-      { sessionId: "session-123", expiresAt: 1788051600000 },
+      { sessionId: "session-123", visitorId: "visitor-123", expiresAt: 1788051600000 },
       "session-secret",
       { secure: false, now: 1788048000000 },
     );
@@ -35,11 +38,29 @@ describe("controlled demo session", () => {
 
     expect(verifyDemoSessionCookie(value, "session-secret", 1788049000000)).toEqual({
       sessionId: "session-123",
+      visitorId: "visitor-123",
       expiresAt: 1788051600000,
     });
     expect(verifyDemoSessionCookie(`${value}tampered`, "session-secret", 1788049000000)).toBeNull();
     expect(verifyDemoSessionCookie(value, "wrong-secret", 1788049000000)).toBeNull();
     expect(verifyDemoSessionCookie(value, "session-secret", 1788051600000)).toBeNull();
+  });
+
+  it("creates a signed 30-day visitor cookie and rejects tampering or expiry", () => {
+    const visitor = { visitorId: "visitor-12345678", expiresAt: 1790640000000 };
+    const cookie = createDemoVisitorCookie(visitor, "session-secret", {
+      secure: true,
+      now: 1788048000000,
+    });
+    const value = cookie.match(new RegExp(`^${DEMO_VISITOR_COOKIE}=([^;]+)`))?.[1] ?? "";
+
+    expect(cookie).toContain("apx_visitor=");
+    expect(cookie).toContain("HttpOnly");
+    expect(cookie).toContain("Secure");
+    expect(cookie).toContain("Max-Age=2592000");
+    expect(verifyDemoVisitorCookie(value, "session-secret", 1788049000000)).toEqual(visitor);
+    expect(verifyDemoVisitorCookie(`${value}tampered`, "session-secret", 1788049000000)).toBeNull();
+    expect(verifyDemoVisitorCookie(value, "session-secret", visitor.expiresAt)).toBeNull();
   });
 
   it("compares the server-side access code without accepting partial values", () => {

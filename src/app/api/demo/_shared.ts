@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { DEMO_SESSION_COOKIE, verifyDemoSessionCookie, type DemoSession } from "@/lib/demo-access/session";
+import { DEMO_SESSION_COOKIE, DEMO_VISITOR_COOKIE, verifyDemoSessionCookie, verifyDemoVisitorCookie, type DemoSession } from "@/lib/demo-access/session";
 import { createRedisDemoSafetyStore } from "@/lib/demo-access/store";
 import { createLiveMarketProviders, getTickerFromProviders } from "@/lib/market-data/market-service";
 import { OkxDemoClient, OkxDemoError } from "@/lib/okx-demo/client";
@@ -33,8 +33,10 @@ export function createDefaultDemoApiDependencies(
     async getSession(request) {
       const secret = environment.SESSION_SECRET;
       if (!secret) return null;
-      const cookie = readCookie(request.headers.get("cookie"), DEMO_SESSION_COOKIE);
-      return verifyDemoSessionCookie(cookie, secret);
+      const header = request.headers.get("cookie");
+      const session = verifyDemoSessionCookie(readCookie(header, DEMO_SESSION_COOKIE), secret);
+      const visitor = verifyDemoVisitorCookie(readCookie(header, DEMO_VISITOR_COOKIE), secret);
+      return session && visitor && session.visitorId === visitor.visitorId ? session : null;
     },
     getService() {
       const client = new OkxDemoClient(readOkxDemoConfig(environment));

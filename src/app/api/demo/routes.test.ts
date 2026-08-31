@@ -2,12 +2,12 @@
 
 import { describe, expect, it, vi } from "vitest";
 
-import type { DemoSession } from "@/lib/demo-access/session";
+import { createDemoSessionCookie, createDemoVisitorCookie, type DemoSession } from "@/lib/demo-access/session";
 import { DemoOrderServiceError } from "@/lib/okx-demo/order-service";
 import { createBalanceHandlers, createCancelOrderHandlers, createFillsHandlers, createOrdersHandlers } from "./_handlers";
-import type { DemoApiDependencies } from "./_shared";
+import { createDefaultDemoApiDependencies, type DemoApiDependencies } from "./_shared";
 
-const session: DemoSession = { sessionId: "session-123", expiresAt: 1788051600000 };
+const session: DemoSession = { sessionId: "session-123", visitorId: "visitor-123", expiresAt: 1788051600000 };
 const origin = "https://apex.example";
 
 function service(overrides: Record<string, unknown> = {}) {
@@ -51,6 +51,20 @@ function mutation(path: string, body?: unknown, headers: Record<string, string> 
 }
 
 describe("OKX Demo private REST routes", () => {
+  it("rejects a valid access session when the signed visitor cookie belongs to another workspace", async () => {
+    const now = 1788048000000;
+    const access = createDemoSessionCookie(session, "session-secret", { secure: true, now });
+    const visitor = createDemoVisitorCookie(
+      { visitorId: "visitor-other", expiresAt: now + 2_592_000_000 },
+      "session-secret",
+      { secure: true, now },
+    );
+    const cookie = [access, visitor].map((value) => value.split(";")[0]).join("; ");
+    const deps = createDefaultDemoApiDependencies({ SESSION_SECRET: "session-secret" });
+
+    await expect(deps.getSession(new Request(`${origin}/api/demo/orders`, { headers: { cookie } }))).resolves.toBeNull();
+  });
+
   it("rejects unauthenticated access and never caches private responses", async () => {
     const handlers = createOrdersHandlers(dependencies({ getSession: vi.fn(async () => null) }));
 
