@@ -6,15 +6,16 @@ import { useEffect } from "react";
 import { chartPeriods } from "@/lib/market-data/types";
 import { Change } from "@/components/ui";
 import { CandlestickChart } from "./candlestick-chart";
-import { useBtcMarket } from "./use-btc-market";
+import { useTradeMarket } from "./use-trade-market";
+import type { TradingPairConfig } from "@/lib/trading/pairs";
 
 const priceFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
 
-function compactVolume(value: number): string {
-  return `${new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 2 }).format(value)} BTC`;
+function compactVolume(value: number, symbol: string): string {
+  return `${new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 2 }).format(value)} ${symbol}`;
 }
 
 const sourceLabels = {
@@ -24,8 +25,8 @@ const sourceLabels = {
   demo: "DEMO DATA",
 } as const;
 
-export function TradeMarketPanel({ onPriceChange }: { onPriceChange?: (price: number) => void }) {
-  const market = useBtcMarket();
+export function TradeMarketPanel({ pair, onPriceChange }: { pair: TradingPairConfig; onPriceChange?: (price: number) => void }) {
+  const market = useTradeMarket(pair);
   const ticker = market.ticker;
   const change = ticker && ticker.open24h !== 0
     ? ((ticker.last - ticker.open24h) / ticker.open24h) * 100
@@ -46,7 +47,7 @@ export function TradeMarketPanel({ onPriceChange }: { onPriceChange?: (price: nu
     <section className="quote-card">
       <div>
         <div className="row gap-10">
-          <span className="muted">BTC/USDT</span>
+          <span className="muted">{pair.baseSymbol}/{pair.quoteSymbol}</span>
           <span className={`market-source ${market.isFallback ? "fallback" : market.source !== "okx" ? "backup" : ""}`}>
             {sourceLabels[market.source]}
           </span>
@@ -57,7 +58,7 @@ export function TradeMarketPanel({ onPriceChange }: { onPriceChange?: (price: nu
       <div className="quote-stats">
         <span><i>24h High</i><b className="mono">{priceFormatter.format(ticker?.high24h ?? 0)}</b></span>
         <span><i>24h Low</i><b className="mono">{priceFormatter.format(ticker?.low24h ?? 0)}</b></span>
-        <span><i>Volume</i><b className="mono">{compactVolume(ticker?.volume24h ?? 0)}</b></span>
+        <span><i>Volume</i><b className="mono">{compactVolume(ticker?.volume24h ?? 0, pair.baseSymbol)}</b></span>
       </div>
     </section>
     <section className="chart-card live-chart-card">
@@ -76,7 +77,7 @@ export function TradeMarketPanel({ onPriceChange }: { onPriceChange?: (price: nu
           <TrendUp className="muted" />
         </div>
       </div>
-      <CandlestickChart candles={market.candles} />
+      <CandlestickChart instrument={pair.instrument} candles={market.candles} />
       {market.hasError && <div className="market-error">
         <WarningCircle />
         <span>实时行情暂时不可用，当前展示演示回退数据。</span>

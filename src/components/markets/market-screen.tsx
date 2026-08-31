@@ -8,6 +8,7 @@ import { AppShell } from "@/components/app-shell";
 import { BrandHeader } from "@/components/brand-header";
 import { AssetMark, Change, FavoriteMarketCard, Sparkline } from "@/components/ui";
 import { filterMarkets } from "@/lib/trading";
+import { getPairBySymbol } from "@/lib/trading/pairs";
 import { useMarketOverview, type OverviewDisplaySource, type OverviewMarket } from "./use-market-overview";
 
 const sourceLabels: Record<OverviewDisplaySource, string> = {
@@ -26,7 +27,8 @@ const updateFormatter = new Intl.DateTimeFormat("zh-CN", {
 });
 
 function MarketDestination({ market, children }: { market: OverviewMarket; children: ReactNode }) {
-  return market.symbol === "BTC" ? <Link href="/trade/btc-usdt">{children}</Link> : <>{children}</>;
+  const pair = getPairBySymbol(market.symbol);
+  return pair ? <Link href={`/trade/${pair.pairSlug}`}>{children}</Link> : <>{children}</>;
 }
 
 function sourceShort(source: OverviewMarket["source"]): string {

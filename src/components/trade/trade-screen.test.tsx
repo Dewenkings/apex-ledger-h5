@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { TradeScreen } from "@/components/screens";
+import { tradingPairs } from "@/lib/trading/pairs";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/trade/btc-usdt",
@@ -35,17 +36,19 @@ describe("TradeScreen live market integration", () => {
     ));
     vi.stubGlobal("fetch", fetcher);
 
-    render(<TradeScreen />);
+    render(<TradeScreen pair={tradingPairs[1]} />);
 
-    expect(await screen.findByDisplayValue("70,000.00")).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("70000.00")).toBeInTheDocument();
+    expect(screen.getByText("ETH / USDT")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "买入 ETH" })).toBeInTheDocument();
     expect(screen.getAllByText("PAPER LIVE").length).toBeGreaterThan(0);
-    expect(screen.getByText("模拟环境，不会请求钱包交易签名或扣除真实资产")).toBeInTheDocument();
+    expect(screen.getByText("OKX 官方模拟盘，不会请求钱包交易签名或扣除真实资产")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "1D" })).toHaveAttribute("aria-pressed", "true");
 
     fireEvent.click(screen.getByRole("button", { name: "1H" }));
 
     await waitFor(() => {
-      expect(fetcher.mock.calls.some(([url]) => String(url) === "/api/market/candles?period=1H")).toBe(true);
+      expect(fetcher.mock.calls.some(([url]) => String(url) === "/api/market/candles?instrument=ETH-USDT&period=1H")).toBe(true);
     });
   });
 });

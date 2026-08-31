@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { TradeMarketPanel } from "./trade-market-panel";
+import { tradingPairs } from "@/lib/trading/pairs";
 
 const ticker = {
   instrument: "BTC-USDT",
@@ -32,7 +33,7 @@ describe("TradeMarketPanel", () => {
   it("loads BTC-USDT public data with 1D selected by default", async () => {
     vi.stubGlobal("fetch", vi.fn(okMarketFetch));
 
-    render(<TradeMarketPanel />);
+    render(<TradeMarketPanel pair={tradingPairs[0]} />);
 
     expect(screen.getByRole("status", { name: "正在加载实时行情" })).toBeInTheDocument();
     expect(await screen.findByText("68,342.10")).toBeInTheDocument();
@@ -43,14 +44,14 @@ describe("TradeMarketPanel", () => {
   it("requests and selects the candle period the user taps", async () => {
     const fetcher = vi.fn(okMarketFetch);
     vi.stubGlobal("fetch", fetcher);
-    render(<TradeMarketPanel />);
+    render(<TradeMarketPanel pair={tradingPairs[0]} />);
     await screen.findByText("68,342.10");
 
     fireEvent.click(screen.getByRole("button", { name: "4H" }));
 
     expect(screen.getByRole("button", { name: "4H" })).toHaveAttribute("aria-pressed", "true");
     await waitFor(() => {
-      expect(fetcher.mock.calls.some(([url]) => String(url) === "/api/market/candles?period=4H")).toBe(true);
+      expect(fetcher.mock.calls.some(([url]) => String(url) === "/api/market/candles?instrument=BTC-USDT&period=4H")).toBe(true);
     });
   });
 
@@ -60,7 +61,7 @@ describe("TradeMarketPanel", () => {
       return new Response("unavailable", { status: 502 });
     });
     vi.stubGlobal("fetch", fetcher);
-    render(<TradeMarketPanel />);
+    render(<TradeMarketPanel pair={tradingPairs[0]} />);
 
     expect(await screen.findByText("DEMO DATA")).toBeInTheDocument();
     fetcher.mockImplementation(okMarketFetch);
@@ -75,8 +76,26 @@ describe("TradeMarketPanel", () => {
       data: String(input).includes("/ticker") ? ticker : candles,
     }))));
 
-    render(<TradeMarketPanel />);
+    render(<TradeMarketPanel pair={tradingPairs[0]} />);
 
     expect(await screen.findByText("KRAKEN LIVE")).toBeInTheDocument();
+  });
+
+  it("queries and labels ETH when the route selects ETH-USDT", async () => {
+    const ethTicker = { ...ticker, instrument: "ETH-USDT", last: 3500, volume24h: 125000 };
+    const fetcher = vi.fn((input: RequestInfo | URL) => Promise.resolve(Response.json({
+      source: "okx",
+      data: String(input).includes("/ticker") ? ethTicker : candles,
+    })));
+    vi.stubGlobal("fetch", fetcher);
+
+    render(<TradeMarketPanel pair={tradingPairs[1]} />);
+
+    expect(await screen.findByText("ETH/USDT")).toBeInTheDocument();
+    expect(screen.getByLabelText("ETH-USDT 蜡烛图")).toBeInTheDocument();
+    expect(fetcher).toHaveBeenCalledWith(
+      "/api/market/ticker?instrument=ETH-USDT",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
   });
 });

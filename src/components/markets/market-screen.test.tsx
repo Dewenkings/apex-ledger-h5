@@ -30,7 +30,7 @@ function liveResponse() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("MarketScreen", () => {
-  it("renders eight source-labelled live assets and only links implemented trading routes", async () => {
+  it("renders eight source-labelled live assets and links BTC, ETH and SOL trading routes", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => liveResponse()));
     render(<MarketScreen />);
 
@@ -39,7 +39,9 @@ describe("MarketScreen", () => {
     expect(screen.getAllByText("POL").length).toBeGreaterThan(0);
     expect(screen.queryByText("MATIC")).not.toBeInTheDocument();
     expect(screen.getByTestId("market-row-BTC").closest("a")).toHaveAttribute("href", "/trade/btc-usdt");
-    expect(screen.getByTestId("market-row-ETH").closest("a")).toBeNull();
+    expect(screen.getByTestId("market-row-ETH").closest("a")).toHaveAttribute("href", "/trade/eth-usdt");
+    expect(screen.getByTestId("market-row-SOL").closest("a")).toHaveAttribute("href", "/trade/sol-usdt");
+    expect(screen.getByTestId("market-row-ADA").closest("a")).toBeNull();
   });
 
   it("filters live rows by query and category without changing favourites", async () => {

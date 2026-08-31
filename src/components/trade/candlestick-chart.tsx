@@ -12,7 +12,7 @@ import {
 
 import type { MarketCandle } from "@/lib/market-data/types";
 
-export function CandlestickChart({ candles }: { candles: MarketCandle[] }) {
+export function CandlestickChart({ instrument, candles }: { instrument: string; candles: MarketCandle[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -71,5 +71,5 @@ export function CandlestickChart({ candles }: { candles: MarketCandle[] }) {
     };
   }, [candles]);
 
-  return <div ref={containerRef} className="candlestick-chart" aria-label="BTC-USDT 蜡烛图" />;
+  return <div ref={containerRef} className="candlestick-chart" aria-label={`${instrument} 蜡烛图`} />;
 }

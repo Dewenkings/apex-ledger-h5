@@ -2,10 +2,9 @@
 /* eslint-disable @next/next/no-img-element -- Preserve the supplied Stitch wallet assets without proxying them. */
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import {
-  ArrowRight, CaretDown, CaretRight, Check, CheckCircle,
+  CaretDown, CaretRight, CheckCircle,
   Clock, Copy, DownloadSimple, Eye, EyeSlash, Gear, Info, Lock,
   PaperPlaneTilt, Plus, Receipt, ShieldCheck, SignOut, SlidersHorizontal,
   Swap, UserCircle, Wallet, X,
@@ -13,40 +12,11 @@ import {
 import { AppShell } from "./app-shell";
 import { BrandHeader } from "./brand-header";
 import { AssetMark, Change, PaperBadge, Sparkline } from "./ui";
-import { TradeMarketPanel } from "./trade/trade-market-panel";
 import { markets, walletProviders, type Market } from "@/lib/data";
-import { estimatePaperOrder } from "@/lib/trading";
+export { TradeScreen } from "./trade/trade-screen";
+export { ConfirmScreen } from "./trade/confirm-screen";
 
 const money = (value: number, digits = 2) => `$${value.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
-
-export function TradeScreen() {
-  const [side, setSide] = useState<"buy" | "sell">("buy"); const [type, setType] = useState<"limit" | "market">("limit"); const [amount, setAmount] = useState("0.025");
-  const [marketPrice, setMarketPrice] = useState(68342.1);
-  const numericAmount = Number(amount) || 0; const quote = estimatePaperOrder({ amount: numericAmount, price: marketPrice, feeRate: 0.001 });
-  const formattedMarketPrice = marketPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return <AppShell><BrandHeader title="BTC / USDT" subtitle="SPOT · PAPER TRADING" back="/markets" />
-    <TradeMarketPanel onPriceChange={setMarketPrice} />
-    <section className="trade-panel"><div className="segmented"><button onClick={() => setSide("buy")} className={side === "buy" ? "buy active" : ""}>买入 BTC</button><button onClick={() => setSide("sell")} className={side === "sell" ? "sell active" : ""}>卖出 BTC</button></div><div className="order-type">{(["limit", "market"] as const).map((t) => <button onClick={() => setType(t)} className={type === t ? "active" : ""} key={t}>{t === "limit" ? "限价" : "市价"}</button>)}</div>
-      <label className="field"><span>{type === "limit" ? "限价" : "参考价格"}</span><div><input value={type === "limit" ? formattedMarketPrice : "Market"} readOnly /><b>USDT</b></div></label>
-      <label className="field"><span>数量</span><div><input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" /><b>BTC</b></div></label>
-      <div className="percent-row">{[25, 50, 75, 100].map((p) => <button key={p} onClick={() => setAmount((0.1 * p / 100).toFixed(3))}>{p}%</button>)}</div>
-      <div className="order-summary"><span>可用余额 <b className="mono">12,480.00 USDT</b></span><span>预计金额 <b className="mono">{money(quote.total)}</b></span></div>
-      <Link href={`/trade/btc-usdt/confirm?side=${side}&amount=${numericAmount}`} className={`primary-button ${side === "sell" ? "danger-button" : ""}`}>{side === "buy" ? "预览买入订单" : "预览卖出订单"}<ArrowRight /></Link><p className="safety-note"><ShieldCheck /> 模拟环境，不会请求钱包交易签名或扣除真实资产</p>
-    </section>
-    <section><div className="section-title"><h3>订单簿</h3><span className="muted mono">0.10</span></div><div className="orderbook"><div><span>价格 (USDT)</span><span>数量 (BTC)</span><span>合计</span></div>{[[68391, .018, "sell"], [68376, .042, "sell"], [68361, .025, "sell"], [68342, .037, "buy"], [68328, .051, "buy"], [68311, .029, "buy"]].map(([p, a, s]) => <div key={`${p}`} className={s as string}><b>{Number(p).toLocaleString()}</b><span>{Number(a).toFixed(3)}</span><span>{money(Number(p) * Number(a), 0)}</span></div>)}</div></section>
-  </AppShell>;
-}
-
-export function ConfirmScreen() {
-  const [status, setStatus] = useState<"idle" | "done">("idle");
-  const params = useSearchParams();
-  const side = params.get("side") === "sell" ? "sell" : "buy";
-  const amount = Math.max(Number(params.get("amount")) || .025, 0);
-  const quote = estimatePaperOrder({ amount, price: 68342.1, feeRate: .001 });
-  const sideLabel = side === "buy" ? "买入" : "卖出";
-  if (status === "done") return <AppShell hideNav><div className="result-screen"><div className="success-orb"><Check /></div><PaperBadge /><h1>模拟订单已提交</h1><p>{sideLabel} {amount} BTC 的 Paper Order 已进入订单历史。</p><div className="receipt"><span>订单编号 <b className="mono">APX-0829-1842</b></span><span>成交环境 <b>PAPER LIVE</b></span><span>真实扣款 <b className="positive">¥0.00</b></span></div><Link href="/orders" className="primary-button">查看订单 <ArrowRight /></Link><Link href="/markets" className="secondary-button">返回行情</Link></div></AppShell>;
-  return <AppShell hideNav><div className="modal-page"><BrandHeader title="确认模拟订单" subtitle="ORDER PREVIEW" back="/trade/btc-usdt" /><section className="confirm-hero"><div className="security-icon"><ShieldCheck /></div><h2>请核对订单信息</h2><p>这是一笔 Paper Trading 模拟订单，不会生成链上交易，也不会扣除钱包资产。</p></section><section className="confirm-card"><div className="row between"><span className="muted">订单方向</span><strong className={side === "buy" ? "positive" : "negative"}>{sideLabel} BTC</strong></div><div className="asset-swap"><div><AssetMark market={markets[0]} size={44} /><span><small>{side === "buy" ? "支付" : "卖出"}</small><strong className="mono">{side === "buy" ? `${money(quote.total)} USDT` : `${amount} BTC`}</strong></span></div><ArrowRight /><div><AssetMark market={markets[0]} size={44} /><span><small>预计{side === "buy" ? "获得" : "收入"}</small><strong className="mono">{side === "buy" ? `${amount} BTC` : `${money(quote.subtotal - quote.fee)} USDT`}</strong></span></div></div><div className="detail-list"><span>订单类型 <b>限价单</b></span><span>限价 <b className="mono">68,342.10 USDT</b></span><span>模拟手续费 <b className="mono">{money(quote.fee)}</b></span><span>环境 <PaperBadge /></span></div></section><div className="warning-box"><Info /><span><strong>不会触发钱包支付</strong>确认只会向本地 Paper Engine 写入模拟订单。</span></div><button onClick={() => setStatus("done")} className="primary-button">确认模拟下单 <CheckCircle /></button><Link href="/trade/btc-usdt" className="secondary-button">返回修改</Link></div></AppShell>;
-}
 
 const orderRows = [
   { side: "BUY", pair: "BTC/USDT", type: "Limit", amount: "0.025 BTC", price: "68,342.10", status: "Open", time: "今天 14:28" },
