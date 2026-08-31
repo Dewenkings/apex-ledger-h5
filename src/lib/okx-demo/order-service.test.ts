@@ -75,7 +75,7 @@ describe("OkxDemoOrderService", () => {
     expect(client.getOrder).toHaveBeenCalledWith({ instrument: "ETH-USDT", ordId: placed.ordId });
   });
 
-  it("places one bounded order with a session-owned idempotent client ID", async () => {
+  it("places one bounded order with a visitor-owned idempotent client ID", async () => {
     const store = new MemoryDemoSafetyStore(() => 1788048000000);
     const client = gateway();
     const service = new OkxDemoOrderService(client, store);

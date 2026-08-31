@@ -62,19 +62,21 @@ npm run dev
 ## OKX 官方 Demo Trading
 
 1. 在 OKX 的 Demo Trading 环境创建 API Key，仅授予模拟交易所需权限，不授予提现权限。
-2. 创建 Upstash Redis，用于限流、幂等、订单归属和当前会话的未结订单计数。
+2. 创建 Upstash Redis，用于限流、幂等、访客订单账本、订单快照和未结订单计数。
 3. 复制 `.env.example` 为 `.env.local`，填写全部私有变量。不要把真实值提交到 Git，也不要粘贴到公开聊天或 Issue。
-4. `DEMO_ACCESS_CODE` 是作品集访问码；登录后服务端签发 4 小时 HTTP-only、SameSite=Lax 的签名 Cookie。
+4. `DEMO_ACCESS_CODE` 是作品集访问码；验证后服务端签发 4 小时访问门禁 Cookie，并创建或复用一个 30 天的 HTTP-only、SameSite=Lax 匿名访客 Cookie。
 
-写操作经过以下边界：同源校验、会话/IP 限流、单会话最多 5 个未结订单、单笔最多 250 USDT、精度校验、`Idempotency-Key`、超时后按 `clOrdId` 对账，以及撤单前再次校验会话订单归属。市价单的限额参考价由服务端读取真实公开行情，浏览器传值会被丢弃。
+写操作经过以下边界：同源校验、访客/IP 限流、单访客最多 5 个未结订单、单笔最多 250 USDT、全站 UTC 日订单与名义金额上限、精度校验、`Idempotency-Key`、超时后按 `clOrdId` 对账，以及撤单前再次校验服务端订单快照归属。市价单的限额参考价由服务端读取真实公开行情，浏览器传值会被丢弃。
 
-`/orders` 只返回当前访问会话创建的订单和成交。`/portfolio` 的余额来自同一个共享 OKX Demo 账户，因此 UI 明确显示“共享 OKX Demo 虚拟余额”，它不是当前钱包资产。
+OKX 接受订单后，应用会先把访客订单索引与展示快照写入 Redis，再通过 `instId + ordId` 调用 OKX 单笔订单接口更新权威状态；因此即使 OKX 账户级列表暂时返回空数组，订单也不会从作品集页面消失。OKX 暂时不可用时，页面会展示最后快照并标记上次同步时间。
+
+`/orders` 只返回当前匿名访客工作区的订单和成交。同一浏览器在 30 天内重新输入访问码后仍可恢复订单；清除 Cookie 或使用隐身窗口会创建新的隔离工作区。不同访客不能查看或撤销彼此的订单。`/portfolio` 的余额仍来自同一个共享 OKX Demo 账户，因此 UI 明确显示“共享 OKX Demo 虚拟余额”，它不是当前钱包资产。
 
 ## Vercel 配置
 
 把仓库导入 Vercel 后，在 Project Settings → Environment Variables 为 Production/Preview 配置 `.env.example` 中除可选 `OKX_API_BASE_URL` 外的全部变量，然后重新部署。私有 Demo API 在配置不完整时会安全返回 `503`，不会回退为本地假成交。
 
-建议先在 Preview 环境验证：访问码登录、BTC/ETH/SOL 限价与市价单、OKX 订单号返回、订单查询、成交查询、撤单、共享虚拟余额，以及跨会话不可见/不可撤单。
+建议先在 Preview 环境验证：访问码登录、BTC/ETH/SOL 限价与市价单、OKX 订单号返回、立即可见、刷新后仍可见、重新验证访问码后恢复、成交查询、撤单、共享虚拟余额，以及跨访客不可见/不可撤单。
 
 参考：[OKX API V5](https://app.okx.com/docs-v5/en)、[Kraken REST API](https://docs.kraken.com/api/docs/rest-api/get-ohlc-data/)、[Lightweight Charts](https://tradingview.github.io/lightweight-charts/)。
 

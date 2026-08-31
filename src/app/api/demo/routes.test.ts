@@ -169,7 +169,7 @@ describe("OKX Demo private REST routes", () => {
     diagnostic.mockRestore();
   });
 
-  it("returns only session-owned orders and fills plus explicitly shared virtual balance", async () => {
+  it("returns only visitor-owned orders and fills plus explicitly shared virtual balance", async () => {
     const fakeService = service();
     const deps = dependencies({ getService: vi.fn(() => fakeService) });
     const orders = await createOrdersHandlers(deps).GET(new Request(`${origin}/api/demo/orders`));
