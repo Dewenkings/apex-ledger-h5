@@ -4,10 +4,14 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createDemoSessionCookie, createDemoVisitorCookie, type DemoSession } from "@/lib/demo-access/session";
 import { DemoOrderServiceError } from "@/lib/okx-demo/order-service";
+import { createWalletSessionCookie } from "@/server/auth/session-cookie";
+import { walletOwnerId } from "@/server/identity/owner";
+import { MemoryIdentityRepository } from "@/server/identity/repository";
 import { createBalanceHandlers, createCancelOrderHandlers, createFillsHandlers, createOrdersHandlers } from "./_handlers";
-import { createDefaultDemoApiDependencies, type DemoApiDependencies } from "./_shared";
+import { createDefaultDemoApiDependencies, type DemoActor, type DemoApiDependencies } from "./_shared";
 
 const session: DemoSession = { sessionId: "session-123", visitorId: "visitor-123", expiresAt: 1788051600000 };
+const actor: DemoActor = { ...session, ownerId: "visitor:visitor-123" };
 const origin = "https://apex.example";
 
 function service(overrides: Record<string, unknown> = {}) {
@@ -29,7 +33,7 @@ function service(overrides: Record<string, unknown> = {}) {
 
 function dependencies(overrides: Partial<DemoApiDependencies> = {}): DemoApiDependencies {
   return {
-    getSession: vi.fn(async () => session),
+    getActor: vi.fn(async () => actor),
     getService: vi.fn(() => service()),
     getReferencePrice: vi.fn(async () => "3500"),
     hashClientIp: vi.fn(() => "ip-hash"),
@@ -62,11 +66,11 @@ describe("OKX Demo private REST routes", () => {
     const cookie = [access, visitor].map((value) => value.split(";")[0]).join("; ");
     const deps = createDefaultDemoApiDependencies({ SESSION_SECRET: "session-secret" });
 
-    await expect(deps.getSession(new Request(`${origin}/api/demo/orders`, { headers: { cookie } }))).resolves.toBeNull();
+    await expect(deps.getActor(new Request(`${origin}/api/demo/orders`, { headers: { cookie } }))).resolves.toBeNull();
   });
 
   it("rejects unauthenticated access and never caches private responses", async () => {
-    const handlers = createOrdersHandlers(dependencies({ getSession: vi.fn(async () => null) }));
+    const handlers = createOrdersHandlers(dependencies({ getActor: vi.fn(async () => null) }));
 
     const response = await handlers.GET(new Request(`${origin}/api/demo/orders`));
 
@@ -98,7 +102,7 @@ describe("OKX Demo private REST routes", () => {
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual({ ordId: "271828", clOrdId: "apx-owned", accepted: true });
     expect(fakeService.place).toHaveBeenCalledWith(
-      session,
+      actor,
       expect.objectContaining({ instrument: "ETH-USDT", amount: "0.02" }),
       "request-123",
       "ip-hash",
@@ -122,7 +126,7 @@ describe("OKX Demo private REST routes", () => {
     }));
 
     expect(fakeService.place).toHaveBeenCalledWith(
-      session,
+      actor,
       expect.objectContaining({ referencePrice: "3499.75" }),
       "request-123",
       "ip-hash",
@@ -207,6 +211,41 @@ describe("OKX Demo private REST routes", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(fakeService.cancelOwnedOrder).toHaveBeenCalledWith(session, "271828");
+    expect(fakeService.cancelOwnedOrder).toHaveBeenCalledWith(actor, "271828");
+  });
+
+  it("uses a matching SIWE wallet owner without bypassing Demo authorization", async () => {
+    const now = Date.now();
+    const activeSession = { ...session, expiresAt: now + 3_600_000 };
+    const access = createDemoSessionCookie(activeSession, "session-secret", { secure: true, now }).split(";")[0];
+    const visitor = createDemoVisitorCookie(
+      { visitorId: session.visitorId, expiresAt: now + 2_592_000_000 },
+      "session-secret",
+      { secure: true, now },
+    ).split(";")[0];
+    const walletSessionId = "wallet_session_123456";
+    const wallet = createWalletSessionCookie(walletSessionId, true).split(";")[0];
+    const identityRepository = new MemoryIdentityRepository(() => now);
+    const ownerId = walletOwnerId("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
+    await identityRepository.saveSession({
+      sessionId: walletSessionId,
+      visitorId: activeSession.visitorId,
+      ownerId,
+      address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      chainId: 1,
+      expiresAt: activeSession.expiresAt,
+    }, 3600);
+    const deps = createDefaultDemoApiDependencies(
+      { SESSION_SECRET: "session-secret" },
+      { identityRepository },
+    );
+
+    await expect(deps.getActor(new Request(`${origin}/api/demo/orders`, {
+      headers: { cookie: `${access}; ${visitor}; ${wallet}` },
+    }))).resolves.toMatchObject({ ownerId });
+
+    await expect(deps.getActor(new Request(`${origin}/api/demo/orders`, {
+      headers: { cookie: `${visitor}; ${wallet}` },
+    }))).resolves.toBeNull();
   });
 });

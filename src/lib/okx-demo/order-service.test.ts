@@ -6,8 +6,14 @@ import { MemoryDemoSafetyStore } from "@/lib/demo-access/store";
 import type { DemoOrder, DemoOrderSnapshot } from "./contracts";
 import { OkxDemoError } from "./client";
 import { OkxDemoOrderService } from "./order-service";
+import { anonymousOwnerId } from "@/server/identity/owner";
 
-const session = { sessionId: "session-123", visitorId: "visitor-123", expiresAt: 1788051600000 };
+const session = {
+  sessionId: "session-123",
+  visitorId: "visitor-123",
+  ownerId: anonymousOwnerId("visitor-123"),
+  expiresAt: 1788051600000,
+};
 const input = {
   instrument: "ETH-USDT",
   side: "buy",
@@ -35,6 +41,7 @@ function snapshot(overrides: Partial<DemoOrderSnapshot> = {}): DemoOrderSnapshot
   return {
     ...acceptedOrder,
     visitorId: session.visitorId,
+    ownerId: session.ownerId,
     syncState: "pending",
     lastSyncedAt: null,
     ...overrides,
@@ -147,7 +154,7 @@ describe("OkxDemoOrderService", () => {
   it("isolates visitor ledgers and falls back to a stale snapshot when exact sync fails", async () => {
     const store = new MemoryDemoSafetyStore(() => 1788048000000);
     const owned = snapshot({ ordId: "owned", clOrdId: "apxowned", lastSyncedAt: 1788047000000 });
-    const other = snapshot({ visitorId: "visitor-other", ordId: "other", clOrdId: "apxother" });
+    const other = snapshot({ visitorId: "visitor-other", ownerId: anonymousOwnerId("visitor-other"), ordId: "other", clOrdId: "apxother" });
     await store.saveVisitorOrder(owned, 300);
     await store.saveVisitorOrder(other, 300);
     const client = gateway({
@@ -158,7 +165,7 @@ describe("OkxDemoOrderService", () => {
     await expect(service.listOrders(session)).resolves.toEqual([
       expect.objectContaining({ ordId: "owned", syncState: "stale", lastSyncedAt: 1788047000000 }),
     ]);
-    await expect(service.listOrders({ ...session, visitorId: "visitor-other" })).resolves.toEqual([
+    await expect(service.listOrders({ ...session, visitorId: "visitor-other", ownerId: anonymousOwnerId("visitor-other") })).resolves.toEqual([
       expect.objectContaining({ ordId: "other", syncState: "stale" }),
     ]);
   });
@@ -199,7 +206,7 @@ describe("OkxDemoOrderService", () => {
   it("lists fills only for visitor ledger orders", async () => {
     const store = new MemoryDemoSafetyStore(() => 1788048000000);
     await store.saveVisitorOrder(snapshot({ ordId: "owned", clOrdId: "apxowned", status: "partially_filled" }), 300);
-    await store.saveVisitorOrder(snapshot({ visitorId: "visitor-other", ordId: "other", clOrdId: "apxother", status: "filled" }), 300);
+    await store.saveVisitorOrder(snapshot({ visitorId: "visitor-other", ownerId: anonymousOwnerId("visitor-other"), ordId: "other", clOrdId: "apxother", status: "filled" }), 300);
     const ownedFill = { instrument: "ETH-USDT" as const, ordId: "owned", clOrdId: "apxowned", tradeId: "1", side: "buy" as const, fillPrice: "3500", fillSize: "0.01", fee: "-0.1", feeCurrency: "USDT", timestamp: 1788048000000 };
     const client = gateway({ listFills: vi.fn(async () => [ownedFill]) });
     const service = new OkxDemoOrderService(client, store);
@@ -217,7 +224,7 @@ describe("OkxDemoOrderService", () => {
     });
     const service = new OkxDemoOrderService(client, store, {}, () => 1788048000000);
 
-    await expect(service.cancelOwnedOrder({ ...session, visitorId: "visitor-other" }, "owned"))
+    await expect(service.cancelOwnedOrder({ ...session, visitorId: "visitor-other", ownerId: anonymousOwnerId("visitor-other") }, "owned"))
       .rejects.toMatchObject({ category: "forbidden" });
     await expect(service.cancelOwnedOrder(session, "owned")).resolves.toMatchObject({ canceled: true });
     expect(client.getOrder).toHaveBeenCalledWith({ instrument: "ETH-USDT", ordId: "owned" });

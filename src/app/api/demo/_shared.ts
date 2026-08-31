@@ -6,19 +6,24 @@ import { createLiveMarketProviders, getTickerFromProviders } from "@/lib/market-
 import { OkxDemoClient, OkxDemoError } from "@/lib/okx-demo/client";
 import type { DemoBalance, DemoCancelReceipt, DemoFill, DemoOrderReceipt, DemoOrderSnapshot } from "@/lib/okx-demo/contracts";
 import { readOkxDemoConfig } from "@/lib/okx-demo/config";
-import { DemoOrderServiceError, OkxDemoOrderService } from "@/lib/okx-demo/order-service";
+import { DemoOrderServiceError, OkxDemoOrderService, type DemoActor } from "@/lib/okx-demo/order-service";
 import type { TradableInstrument } from "@/lib/trading/pairs";
+import { readWalletSessionId } from "@/server/auth/session-cookie";
+import { anonymousOwnerId } from "@/server/identity/owner";
+import { createRedisIdentityRepository, type IdentityRepository } from "@/server/identity/repository";
+
+export type { DemoActor } from "@/lib/okx-demo/order-service";
 
 export type DemoTradingService = {
-  place(session: DemoSession, input: unknown, requestId: string, clientIpKey: string): Promise<DemoOrderReceipt>;
-  listOrders(session: DemoSession): Promise<DemoOrderSnapshot[]>;
-  listFills(session: DemoSession): Promise<DemoFill[]>;
+  place(session: DemoActor, input: unknown, requestId: string, clientIpKey: string): Promise<DemoOrderReceipt>;
+  listOrders(session: DemoActor): Promise<DemoOrderSnapshot[]>;
+  listFills(session: DemoActor): Promise<DemoFill[]>;
   getSharedBalance(): Promise<DemoBalance>;
-  cancelOwnedOrder(session: DemoSession, ordId: string): Promise<DemoCancelReceipt>;
+  cancelOwnedOrder(session: DemoActor, ordId: string): Promise<DemoCancelReceipt>;
 };
 
 export type DemoApiDependencies = {
-  getSession(request: Request): Promise<DemoSession | null>;
+  getActor(request: Request): Promise<DemoActor | null>;
   getService(): DemoTradingService;
   getReferencePrice(instrument: TradableInstrument): Promise<string>;
   hashClientIp(request: Request): string;
@@ -28,15 +33,26 @@ const NO_STORE_HEADERS = { "Cache-Control": "no-store" };
 
 export function createDefaultDemoApiDependencies(
   environment: Record<string, string | undefined> = process.env,
+  options: { identityRepository?: IdentityRepository } = {},
 ): DemoApiDependencies {
   return {
-    async getSession(request) {
+    async getActor(request) {
       const secret = environment.SESSION_SECRET;
       if (!secret) return null;
       const header = request.headers.get("cookie");
       const session = verifyDemoSessionCookie(readCookie(header, DEMO_SESSION_COOKIE), secret);
       const visitor = verifyDemoVisitorCookie(readCookie(header, DEMO_VISITOR_COOKIE), secret);
-      return session && visitor && session.visitorId === visitor.visitorId ? session : null;
+      if (!session || !visitor || session.visitorId !== visitor.visitorId) return null;
+      const sessionId = readWalletSessionId(header);
+      if (!sessionId) return { ...session, ownerId: anonymousOwnerId(visitor.visitorId) };
+      const identityRepository = options.identityRepository ?? createRedisIdentityRepository(environment);
+      const walletSession = await identityRepository.getSession(sessionId);
+      return {
+        ...session,
+        ownerId: walletSession?.visitorId === visitor.visitorId
+          ? walletSession.ownerId
+          : anonymousOwnerId(visitor.visitorId),
+      };
     },
     getService() {
       const client = new OkxDemoClient(readOkxDemoConfig(environment));
@@ -58,12 +74,12 @@ export function noStoreJson(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: NO_STORE_HEADERS });
 }
 
-export async function requireDemoSession(
+export async function requireDemoActor(
   request: Request,
   dependencies: DemoApiDependencies,
-): Promise<DemoSession | Response> {
-  const session = await dependencies.getSession(request);
-  return session ?? noStoreJson({ error: "Demo access is required", code: "unauthorized" }, 401);
+): Promise<DemoActor | Response> {
+  const actor = await dependencies.getActor(request);
+  return actor ?? noStoreJson({ error: "Demo access is required", code: "unauthorized" }, 401);
 }
 
 export function requireSameOrigin(request: Request): Response | null {
