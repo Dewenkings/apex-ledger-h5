@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { createSessionHandlers } from "./route";
+import { createSessionHandlers } from "./handlers";
 
 const environment = {
   DEMO_ACCESS_CODE: "approved-code",

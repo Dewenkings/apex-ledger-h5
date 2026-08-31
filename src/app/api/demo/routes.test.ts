@@ -4,10 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { DemoSession } from "@/lib/demo-access/session";
 import { DemoOrderServiceError } from "@/lib/okx-demo/order-service";
-import { createBalanceHandlers } from "./balance/route";
-import { createFillsHandlers } from "./fills/route";
-import { createCancelOrderHandlers } from "./orders/[orderId]/cancel/route";
-import { createOrdersHandlers } from "./orders/route";
+import { createBalanceHandlers, createCancelOrderHandlers, createFillsHandlers, createOrdersHandlers } from "./_handlers";
 import type { DemoApiDependencies } from "./_shared";
 
 const session: DemoSession = { sessionId: "session-123", expiresAt: 1788051600000 };
