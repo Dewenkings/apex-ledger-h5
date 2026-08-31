@@ -53,4 +53,40 @@ describe("OKX Demo account screens", () => {
     expect(await screen.findByText("请先从交易确认页输入演示访问码")).toBeInTheDocument();
     expect(screen.queryByText("271828")).not.toBeInTheDocument();
   });
+
+  it("shows pending and stale OKX synchronization states in the visitor workspace", async () => {
+    const pending = { ...order, syncState: "pending", lastSyncedAt: null };
+    const stale = { ...order, ordId: "161803", status: "filled", syncState: "stale", lastSyncedAt: 1788047000000 };
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/demo/session")) return Response.json({ authenticated: true });
+      if (url.endsWith("/api/demo/orders")) return Response.json({ orders: [pending, stale] });
+      if (url.endsWith("/api/demo/fills")) return Response.json({ fills: [] });
+      if (url.endsWith("/api/demo/balance")) return Response.json({ balance });
+      return new Response("not found", { status: 404 });
+    }));
+
+    render(<OrdersScreen />);
+
+    expect(await screen.findByText("正在同步 OKX")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "历史订单" }));
+    expect(screen.getByText(/上次同步于/)).toBeInTheDocument();
+    expect(screen.getByText("当前访客工作区")).toBeInTheDocument();
+  });
+
+  it("shows a personal empty state after an authenticated ledger response", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/demo/session")) return Response.json({ authenticated: true });
+      if (url.endsWith("/api/demo/orders")) return Response.json({ orders: [] });
+      if (url.endsWith("/api/demo/fills")) return Response.json({ fills: [] });
+      if (url.endsWith("/api/demo/balance")) return Response.json({ balance });
+      return new Response("not found", { status: 404 });
+    }));
+
+    render(<OrdersScreen />);
+
+    expect(await screen.findByText("尚无个人模拟订单")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "前往市场" })).toHaveAttribute("href", "/markets");
+  });
 });

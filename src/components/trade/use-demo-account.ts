@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import type { DemoBalance, DemoFill, DemoOrder } from "@/lib/okx-demo/contracts";
+import type { DemoBalance, DemoFill, DemoOrder, DemoOrderSnapshot } from "@/lib/okx-demo/contracts";
 
 type AccountState = "loading" | "locked" | "ready" | "error";
 
@@ -15,7 +15,7 @@ async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
 
 export function useDemoAccount() {
   const [state, setState] = useState<AccountState>("loading");
-  const [orders, setOrders] = useState<DemoOrder[]>([]);
+  const [orders, setOrders] = useState<DemoOrderSnapshot[]>([]);
   const [fills, setFills] = useState<DemoFill[]>([]);
   const [balance, setBalance] = useState<DemoBalance | null>(null);
   const [message, setMessage] = useState("");
@@ -25,7 +25,7 @@ export function useDemoAccount() {
       const session = await getJson<{ authenticated: boolean }>("/api/demo/session");
       if (!session.authenticated) { setState("locked"); return; }
       const [orderResult, fillResult, balanceResult] = await Promise.all([
-        getJson<{ orders: DemoOrder[] }>("/api/demo/orders"),
+        getJson<{ orders: DemoOrderSnapshot[] }>("/api/demo/orders"),
         getJson<{ fills: DemoFill[] }>("/api/demo/fills"),
         getJson<{ balance: DemoBalance }>("/api/demo/balance"),
       ]);
