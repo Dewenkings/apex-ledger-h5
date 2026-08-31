@@ -83,10 +83,11 @@ export class OkxDemoClient {
     return rows.map(normalizeOrder);
   }
 
-  async listFills(instrument?: TradableInstrument): Promise<DemoFill[]> {
+  async listFills(input: { instrument?: TradableInstrument; ordId?: string } = {}): Promise<DemoFill[]> {
     const rows = await this.request("GET", "/api/v5/trade/fills", compactQuery({
       instType: "SPOT",
-      instId: instrument,
+      instId: input.instrument,
+      ordId: input.ordId,
     }));
     return rows.map(normalizeFill);
   }

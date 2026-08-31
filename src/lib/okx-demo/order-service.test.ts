@@ -195,4 +195,33 @@ describe("OkxDemoOrderService", () => {
       .rejects.toMatchObject({ category: "global_demo_limit" });
     expect(client.placeOrder).not.toHaveBeenCalled();
   });
+
+  it("lists fills only for visitor ledger orders", async () => {
+    const store = new MemoryDemoSafetyStore(() => 1788048000000);
+    await store.saveVisitorOrder(snapshot({ ordId: "owned", clOrdId: "apxowned", status: "partially_filled" }), 300);
+    await store.saveVisitorOrder(snapshot({ visitorId: "visitor-other", ordId: "other", clOrdId: "apxother", status: "filled" }), 300);
+    const ownedFill = { instrument: "ETH-USDT" as const, ordId: "owned", clOrdId: "apxowned", tradeId: "1", side: "buy" as const, fillPrice: "3500", fillSize: "0.01", fee: "-0.1", feeCurrency: "USDT", timestamp: 1788048000000 };
+    const client = gateway({ listFills: vi.fn(async () => [ownedFill]) });
+    const service = new OkxDemoOrderService(client, store);
+
+    await expect(service.listFills(session)).resolves.toEqual([ownedFill]);
+    expect(client.listFills).toHaveBeenCalledWith({ instrument: "ETH-USDT", ordId: "owned" });
+  });
+
+  it("authorizes cancellation from the visitor snapshot instead of client input", async () => {
+    const store = new MemoryDemoSafetyStore(() => 1788048000000);
+    const owned = snapshot({ ordId: "owned", clOrdId: "apxowned" });
+    await store.saveVisitorOrder(owned, 300);
+    const client = gateway({
+      getOrder: vi.fn(async () => ({ ...acceptedOrder, ordId: "owned", clOrdId: "apxowned" })),
+    });
+    const service = new OkxDemoOrderService(client, store, {}, () => 1788048000000);
+
+    await expect(service.cancelOwnedOrder({ ...session, visitorId: "visitor-other" }, "owned"))
+      .rejects.toMatchObject({ category: "forbidden" });
+    await expect(service.cancelOwnedOrder(session, "owned")).resolves.toMatchObject({ canceled: true });
+    expect(client.getOrder).toHaveBeenCalledWith({ instrument: "ETH-USDT", ordId: "owned" });
+    expect(client.cancelOrder).toHaveBeenCalledWith({ instrument: "ETH-USDT", ordId: "owned" });
+    await expect(store.getVisitorOrder("owned")).resolves.toMatchObject({ status: "canceled", syncState: "synced" });
+  });
 });

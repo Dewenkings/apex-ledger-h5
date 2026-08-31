@@ -20,7 +20,7 @@ export type OkxDemoGateway = {
   getOrder(input: { instrument: TradableInstrument; ordId?: string; clOrdId?: string }): Promise<DemoOrder>;
   listPendingOrders(instrument?: TradableInstrument): Promise<DemoOrder[]>;
   listOrderHistory(instrument?: TradableInstrument): Promise<DemoOrder[]>;
-  listFills(instrument?: TradableInstrument): Promise<DemoFill[]>;
+  listFills(input?: { instrument?: TradableInstrument; ordId?: string }): Promise<DemoFill[]>;
   cancelOrder(input: { instrument: TradableInstrument; ordId: string }): Promise<DemoCancelReceipt>;
   getBalance(): Promise<DemoBalance>;
 };
@@ -199,13 +199,18 @@ export class OkxDemoOrderService {
   }
 
   async listFills(session: DemoSession): Promise<DemoFill[]> {
-    const fills = await this.client.listFills();
-    const visible: DemoFill[] = [];
-    for (const fill of fills) {
-      const owner = await this.store.getOrderOwner(fill.ordId);
-      if (owner?.sessionId === session.sessionId && owner.clOrdId === fill.clOrdId) visible.push(fill);
-    }
-    return visible.sort((left, right) => right.timestamp - left.timestamp);
+    const snapshots = (await this.store.listVisitorOrders(session.visitorId, 50))
+      .filter((snapshot) => snapshot.status === "filled" || snapshot.status === "partially_filled");
+    const groups = await mapWithConcurrency(snapshots, 5, async (snapshot) => {
+      try {
+        const fills = await this.client.listFills({ instrument: snapshot.instrument, ordId: snapshot.ordId });
+        return fills.filter((fill) => fill.ordId === snapshot.ordId && fill.clOrdId === snapshot.clOrdId);
+      } catch {
+        return [];
+      }
+    });
+    return [...new Map(groups.flat().map((fill) => [fill.tradeId, fill])).values()]
+      .sort((left, right) => right.timestamp - left.timestamp);
   }
 
   getSharedBalance(): Promise<DemoBalance> {
@@ -215,18 +220,24 @@ export class OkxDemoOrderService {
   async cancelOwnedOrder(
     session: DemoSession,
     ordId: string,
-    instrument: TradableInstrument,
   ): Promise<DemoCancelReceipt> {
-    const owner = await this.store.getOrderOwner(ordId);
-    if (!owner || owner.sessionId !== session.sessionId) {
+    const snapshot = await this.store.getVisitorOrder(ordId);
+    if (!snapshot || snapshot.visitorId !== session.visitorId) {
       throw new DemoOrderServiceError("forbidden", "Demo order is not owned by this session");
     }
-    const order = await this.client.getOrder({ instrument, ordId });
-    if (order.clOrdId !== owner.clOrdId || order.instrument !== instrument) {
+    const order = await this.client.getOrder({ instrument: snapshot.instrument, ordId });
+    if (order.clOrdId !== snapshot.clOrdId || order.instrument !== snapshot.instrument) {
       throw new DemoOrderServiceError("forbidden", "Demo order ownership could not be verified");
     }
-    const result = await this.client.cancelOrder({ instrument, ordId });
-    await this.store.markOrderClosed(ordId);
+    const result = await this.client.cancelOrder({ instrument: snapshot.instrument, ordId });
+    const updatedAt = this.now();
+    await this.store.saveVisitorOrder({
+      ...snapshot,
+      status: "canceled",
+      updatedAt,
+      syncState: "synced",
+      lastSyncedAt: updatedAt,
+    }, this.policy.ownershipTtlSeconds);
     return result;
   }
 }

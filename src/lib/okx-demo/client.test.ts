@@ -103,9 +103,10 @@ describe("OkxDemoClient", () => {
     await expect(client.listOrderHistory("ETH-USDT")).resolves.toEqual([
       expect.objectContaining({ status: "filled", filledSize: "0.02" }),
     ]);
-    await expect(client.listFills("ETH-USDT")).resolves.toEqual([
+    await expect(client.listFills({ instrument: "ETH-USDT", ordId: "271828" })).resolves.toEqual([
       expect.objectContaining({ tradeId: "314159", fillPrice: "3498.5", feeCurrency: "ETH" }),
     ]);
+    expect(fetcher.mock.calls.some(([input]) => String(input) === "https://openapi.okx.com/api/v5/trade/fills?instType=SPOT&instId=ETH-USDT&ordId=271828")).toBe(true);
     await expect(client.getBalance()).resolves.toEqual({
       totalEquity: "50000.25",
       updatedAt: 1788048001000,
