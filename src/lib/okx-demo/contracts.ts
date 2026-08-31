@@ -22,6 +22,14 @@ export type DemoOrder = {
   updatedAt: number;
 };
 
+export type DemoOrderSyncState = "pending" | "synced" | "stale";
+
+export type DemoOrderSnapshot = DemoOrder & {
+  visitorId: string;
+  syncState: DemoOrderSyncState;
+  lastSyncedAt: number | null;
+};
+
 export type DemoFill = {
   instrument: TradableInstrument;
   ordId: string;

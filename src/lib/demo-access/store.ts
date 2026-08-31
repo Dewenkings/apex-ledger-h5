@@ -1,4 +1,5 @@
 import { Redis } from "@upstash/redis";
+import type { DemoOrderSnapshot } from "@/lib/okx-demo/contracts";
 
 export type RateLimitResult = { allowed: boolean; remaining: number };
 export type IdempotencyClaim =
@@ -16,16 +17,30 @@ export interface DemoSafetyStore {
   markOrderClosed(ordId: string): Promise<void>;
   removeOrderOwner(ordId: string): Promise<void>;
   countSessionOpenOrders(sessionId: string): Promise<number>;
+  saveVisitorOrder(snapshot: DemoOrderSnapshot, ttlSeconds: number): Promise<void>;
+  getVisitorOrder(ordId: string): Promise<DemoOrderSnapshot | null>;
+  listVisitorOrders(visitorId: string, limit: number): Promise<DemoOrderSnapshot[]>;
+  removeVisitorOrder(visitorId: string, ordId: string): Promise<void>;
+  countVisitorOpenOrders(visitorId: string): Promise<number>;
+  consumeGlobalDailyBudget(
+    day: string,
+    notionalCents: number,
+    limits: { orders: number; notionalCents: number },
+    ttlSeconds: number,
+  ): Promise<{ allowed: boolean }>;
 }
 
 type Expiring<T> = { value: T; expiresAt: number };
 type IdempotencyRecord = { requestHash: string; response?: unknown };
+type DailyBudget = { orders: number; notionalCents: number };
 
 export class MemoryDemoSafetyStore implements DemoSafetyStore {
   private readonly rates = new Map<string, Expiring<number>>();
   private readonly idempotency = new Map<string, Expiring<IdempotencyRecord>>();
   private readonly owners = new Map<string, Expiring<OrderOwner>>();
   private readonly openOrderIds = new Set<string>();
+  private readonly visitorOrders = new Map<string, Expiring<DemoOrderSnapshot>>();
+  private readonly dailyBudgets = new Map<string, Expiring<DailyBudget>>();
 
   constructor(private readonly now: () => number = Date.now) {}
 
@@ -86,6 +101,60 @@ export class MemoryDemoSafetyStore implements DemoSafetyStore {
   async countSessionOpenOrders(sessionId: string): Promise<number> {
     const owners = await Promise.all([...this.openOrderIds].map((ordId) => this.getOrderOwner(ordId)));
     return owners.filter((owner) => owner?.sessionId === sessionId).length;
+  }
+
+  async saveVisitorOrder(snapshot: DemoOrderSnapshot, ttlSeconds: number): Promise<void> {
+    this.visitorOrders.set(snapshot.ordId, {
+      value: snapshot,
+      expiresAt: this.now() + ttlSeconds * 1000,
+    });
+  }
+
+  async getVisitorOrder(ordId: string): Promise<DemoOrderSnapshot | null> {
+    const record = this.visitorOrders.get(ordId);
+    if (!record || record.expiresAt <= this.now()) {
+      this.visitorOrders.delete(ordId);
+      return null;
+    }
+    return record.value;
+  }
+
+  async listVisitorOrders(visitorId: string, limit: number): Promise<DemoOrderSnapshot[]> {
+    const snapshots = await Promise.all([...this.visitorOrders.keys()].map((ordId) => this.getVisitorOrder(ordId)));
+    return snapshots
+      .filter((snapshot): snapshot is DemoOrderSnapshot => snapshot?.visitorId === visitorId)
+      .sort((left, right) => right.createdAt - left.createdAt)
+      .slice(0, Math.max(0, limit));
+  }
+
+  async removeVisitorOrder(visitorId: string, ordId: string): Promise<void> {
+    const snapshot = await this.getVisitorOrder(ordId);
+    if (snapshot?.visitorId === visitorId) this.visitorOrders.delete(ordId);
+  }
+
+  async countVisitorOpenOrders(visitorId: string): Promise<number> {
+    const snapshots = await this.listVisitorOrders(visitorId, 50);
+    return snapshots.filter((snapshot) => snapshot.status === "live" || snapshot.status === "partially_filled").length;
+  }
+
+  async consumeGlobalDailyBudget(
+    day: string,
+    notionalCents: number,
+    limits: { orders: number; notionalCents: number },
+    ttlSeconds: number,
+  ): Promise<{ allowed: boolean }> {
+    const current = this.dailyBudgets.get(day);
+    const budget = current && current.expiresAt > this.now()
+      ? current.value
+      : { orders: 0, notionalCents: 0 };
+    if (budget.orders + 1 > limits.orders || budget.notionalCents + notionalCents > limits.notionalCents) {
+      return { allowed: false };
+    }
+    this.dailyBudgets.set(day, {
+      value: { orders: budget.orders + 1, notionalCents: budget.notionalCents + notionalCents },
+      expiresAt: this.now() + ttlSeconds * 1000,
+    });
+    return { allowed: true };
   }
 }
 
@@ -149,6 +218,57 @@ export class RedisDemoSafetyStore implements DemoSafetyStore {
     const stale = orderIds.filter((_, index) => !owners[index]);
     if (stale.length > 0) await this.redis.srem(sessionKey, ...stale);
     return owners.filter(Boolean).length;
+  }
+
+  async saveVisitorOrder(snapshot: DemoOrderSnapshot, ttlSeconds: number): Promise<void> {
+    const orderKey = `apx:order:${snapshot.ordId}`;
+    const visitorKey = `apx:visitor-orders:${snapshot.visitorId}`;
+    await Promise.all([
+      this.redis.set(orderKey, snapshot, { ex: ttlSeconds }),
+      this.redis.zadd(visitorKey, { score: snapshot.createdAt, member: snapshot.ordId }),
+      this.redis.expire(visitorKey, ttlSeconds),
+    ]);
+  }
+
+  async getVisitorOrder(ordId: string): Promise<DemoOrderSnapshot | null> {
+    return this.redis.get<DemoOrderSnapshot>(`apx:order:${ordId}`);
+  }
+
+  async listVisitorOrders(visitorId: string, limit: number): Promise<DemoOrderSnapshot[]> {
+    const visitorKey = `apx:visitor-orders:${visitorId}`;
+    const orderIds = await this.redis.zrange<string[]>(visitorKey, 0, Math.max(0, limit - 1), { rev: true });
+    const snapshots = await Promise.all(orderIds.map((ordId) => this.getVisitorOrder(ordId)));
+    const staleIds = orderIds.filter((_, index) => snapshots[index]?.visitorId !== visitorId);
+    if (staleIds.length > 0) await this.redis.zrem(visitorKey, ...staleIds);
+    return snapshots.filter((snapshot): snapshot is DemoOrderSnapshot => snapshot?.visitorId === visitorId);
+  }
+
+  async removeVisitorOrder(visitorId: string, ordId: string): Promise<void> {
+    const snapshot = await this.getVisitorOrder(ordId);
+    if (snapshot?.visitorId !== visitorId) return;
+    await Promise.all([
+      this.redis.del(`apx:order:${ordId}`),
+      this.redis.zrem(`apx:visitor-orders:${visitorId}`, ordId),
+    ]);
+  }
+
+  async countVisitorOpenOrders(visitorId: string): Promise<number> {
+    const snapshots = await this.listVisitorOrders(visitorId, 50);
+    return snapshots.filter((snapshot) => snapshot.status === "live" || snapshot.status === "partially_filled").length;
+  }
+
+  async consumeGlobalDailyBudget(
+    day: string,
+    notionalCents: number,
+    limits: { orders: number; notionalCents: number },
+    ttlSeconds: number,
+  ): Promise<{ allowed: boolean }> {
+    const allowed = await this.redis.eval<unknown[], number>(
+      "local o=tonumber(redis.call('GET',KEYS[1]) or '0'); local n=tonumber(redis.call('GET',KEYS[2]) or '0'); if o+1>tonumber(ARGV[1]) or n+tonumber(ARGV[3])>tonumber(ARGV[2]) then return 0 end; redis.call('INCR',KEYS[1]); redis.call('INCRBY',KEYS[2],ARGV[3]); redis.call('EXPIRE',KEYS[1],ARGV[4]); redis.call('EXPIRE',KEYS[2],ARGV[4]); return 1",
+      [`apx:daily:${day}:orders`, `apx:daily:${day}:notional`],
+      [limits.orders, limits.notionalCents, notionalCents, ttlSeconds],
+    );
+    return { allowed: allowed === 1 };
   }
 }
 
