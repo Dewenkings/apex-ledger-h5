@@ -1,4 +1,5 @@
 import type { TradableInstrument } from "@/lib/trading/pairs";
+import type { OwnerId } from "@/server/identity/owner";
 
 export type DemoOrderStatus =
   | "live"
@@ -26,6 +27,7 @@ export type DemoOrderSyncState = "pending" | "synced" | "stale";
 
 export type DemoOrderSnapshot = DemoOrder & {
   visitorId: string;
+  ownerId?: OwnerId;
   syncState: DemoOrderSyncState;
   lastSyncedAt: number | null;
 };

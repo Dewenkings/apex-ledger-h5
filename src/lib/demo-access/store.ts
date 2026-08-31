@@ -1,5 +1,6 @@
 import { Redis } from "@upstash/redis";
 import type { DemoOrderSnapshot } from "@/lib/okx-demo/contracts";
+import { anonymousOwnerId, snapshotOwnerId, type OwnerId } from "@/server/identity/owner";
 
 export type RateLimitResult = { allowed: boolean; remaining: number };
 export type IdempotencyClaim =
@@ -22,6 +23,11 @@ export interface DemoSafetyStore {
   listVisitorOrders(visitorId: string, limit: number): Promise<DemoOrderSnapshot[]>;
   removeVisitorOrder(visitorId: string, ordId: string): Promise<void>;
   countVisitorOpenOrders(visitorId: string): Promise<number>;
+  saveOwnerOrder(snapshot: DemoOrderSnapshot & { ownerId: OwnerId }, ttlSeconds: number): Promise<void>;
+  listOwnerOrders(ownerId: OwnerId, limit: number): Promise<DemoOrderSnapshot[]>;
+  removeOwnerOrder(ownerId: OwnerId, ordId: string): Promise<void>;
+  countOwnerOpenOrders(ownerId: OwnerId): Promise<number>;
+  migrateVisitorWorkspace(visitorId: string, ownerId: OwnerId, ttlSeconds: number): Promise<void>;
   consumeGlobalDailyBudget(
     day: string,
     notionalCents: number,
@@ -122,7 +128,11 @@ export class MemoryDemoSafetyStore implements DemoSafetyStore {
   async listVisitorOrders(visitorId: string, limit: number): Promise<DemoOrderSnapshot[]> {
     const snapshots = await Promise.all([...this.visitorOrders.keys()].map((ordId) => this.getVisitorOrder(ordId)));
     return snapshots
-      .filter((snapshot): snapshot is DemoOrderSnapshot => snapshot?.visitorId === visitorId)
+      .filter((snapshot): snapshot is DemoOrderSnapshot => Boolean(
+        snapshot
+        && snapshot.visitorId === visitorId
+        && snapshotOwnerId(snapshot) === anonymousOwnerId(visitorId),
+      ))
       .sort((left, right) => right.createdAt - left.createdAt)
       .slice(0, Math.max(0, limit));
   }
@@ -135,6 +145,36 @@ export class MemoryDemoSafetyStore implements DemoSafetyStore {
   async countVisitorOpenOrders(visitorId: string): Promise<number> {
     const snapshots = await this.listVisitorOrders(visitorId, 50);
     return snapshots.filter((snapshot) => snapshot.status === "live" || snapshot.status === "partially_filled").length;
+  }
+
+  async saveOwnerOrder(snapshot: DemoOrderSnapshot & { ownerId: OwnerId }, ttlSeconds: number): Promise<void> {
+    this.visitorOrders.set(snapshot.ordId, {
+      value: snapshot,
+      expiresAt: this.now() + ttlSeconds * 1000,
+    });
+  }
+
+  async listOwnerOrders(ownerId: OwnerId, limit: number): Promise<DemoOrderSnapshot[]> {
+    const snapshots = await Promise.all([...this.visitorOrders.keys()].map((ordId) => this.getVisitorOrder(ordId)));
+    return snapshots
+      .filter((snapshot): snapshot is DemoOrderSnapshot => Boolean(snapshot && snapshotOwnerId(snapshot) === ownerId))
+      .sort((left, right) => right.createdAt - left.createdAt)
+      .slice(0, Math.max(0, limit));
+  }
+
+  async removeOwnerOrder(ownerId: OwnerId, ordId: string): Promise<void> {
+    const snapshot = await this.getVisitorOrder(ordId);
+    if (snapshot && snapshotOwnerId(snapshot) === ownerId) this.visitorOrders.delete(ordId);
+  }
+
+  async countOwnerOpenOrders(ownerId: OwnerId): Promise<number> {
+    const snapshots = await this.listOwnerOrders(ownerId, 50);
+    return snapshots.filter((item) => item.status === "live" || item.status === "partially_filled").length;
+  }
+
+  async migrateVisitorWorkspace(visitorId: string, ownerId: OwnerId, ttlSeconds: number): Promise<void> {
+    const snapshots = await this.listVisitorOrders(visitorId, 50);
+    await Promise.all(snapshots.map((item) => this.saveOwnerOrder({ ...item, ownerId }, ttlSeconds)));
   }
 
   async consumeGlobalDailyBudget(
@@ -238,9 +278,18 @@ export class RedisDemoSafetyStore implements DemoSafetyStore {
     const visitorKey = `apx:visitor-orders:${visitorId}`;
     const orderIds = await this.redis.zrange<string[]>(visitorKey, 0, Math.max(0, limit - 1), { rev: true });
     const snapshots = await Promise.all(orderIds.map((ordId) => this.getVisitorOrder(ordId)));
-    const staleIds = orderIds.filter((_, index) => snapshots[index]?.visitorId !== visitorId);
+    const staleIds = orderIds.filter((_, index) => {
+      const snapshot = snapshots[index];
+      return !snapshot
+        || snapshot.visitorId !== visitorId
+        || snapshotOwnerId(snapshot) !== anonymousOwnerId(visitorId);
+    });
     if (staleIds.length > 0) await this.redis.zrem(visitorKey, ...staleIds);
-    return snapshots.filter((snapshot): snapshot is DemoOrderSnapshot => snapshot?.visitorId === visitorId);
+    return snapshots.filter((snapshot): snapshot is DemoOrderSnapshot => Boolean(
+      snapshot
+      && snapshot.visitorId === visitorId
+      && snapshotOwnerId(snapshot) === anonymousOwnerId(visitorId),
+    ));
   }
 
   async removeVisitorOrder(visitorId: string, ordId: string): Promise<void> {
@@ -255,6 +304,63 @@ export class RedisDemoSafetyStore implements DemoSafetyStore {
   async countVisitorOpenOrders(visitorId: string): Promise<number> {
     const snapshots = await this.listVisitorOrders(visitorId, 50);
     return snapshots.filter((snapshot) => snapshot.status === "live" || snapshot.status === "partially_filled").length;
+  }
+
+  async saveOwnerOrder(snapshot: DemoOrderSnapshot & { ownerId: OwnerId }, ttlSeconds: number): Promise<void> {
+    const orderKey = `apx:order:${snapshot.ordId}`;
+    const ownerKey = `apx:owner-orders:${snapshot.ownerId}`;
+    await Promise.all([
+      this.redis.set(orderKey, snapshot, { ex: ttlSeconds }),
+      this.redis.zadd(ownerKey, { score: snapshot.createdAt, member: snapshot.ordId }),
+      this.redis.expire(ownerKey, ttlSeconds),
+    ]);
+  }
+
+  async listOwnerOrders(ownerId: OwnerId, limit: number): Promise<DemoOrderSnapshot[]> {
+    const ownerKey = `apx:owner-orders:${ownerId}`;
+    const orderIds = await this.redis.zrange<string[]>(ownerKey, 0, Math.max(0, limit - 1), { rev: true });
+    const snapshots = await Promise.all(orderIds.map((ordId) => this.getVisitorOrder(ordId)));
+    const staleIds = orderIds.filter((_, index) => {
+      const snapshot = snapshots[index];
+      return !snapshot || snapshotOwnerId(snapshot) !== ownerId;
+    });
+    if (staleIds.length > 0) await this.redis.zrem(ownerKey, ...staleIds);
+    return snapshots.filter((snapshot): snapshot is DemoOrderSnapshot => Boolean(
+      snapshot && snapshotOwnerId(snapshot) === ownerId,
+    ));
+  }
+
+  async removeOwnerOrder(ownerId: OwnerId, ordId: string): Promise<void> {
+    const snapshot = await this.getVisitorOrder(ordId);
+    if (!snapshot || snapshotOwnerId(snapshot) !== ownerId) return;
+    await Promise.all([
+      this.redis.del(`apx:order:${ordId}`),
+      this.redis.zrem(`apx:owner-orders:${ownerId}`, ordId),
+    ]);
+  }
+
+  async countOwnerOpenOrders(ownerId: OwnerId): Promise<number> {
+    const snapshots = await this.listOwnerOrders(ownerId, 50);
+    return snapshots.filter((item) => item.status === "live" || item.status === "partially_filled").length;
+  }
+
+  async migrateVisitorWorkspace(visitorId: string, ownerId: OwnerId, ttlSeconds: number): Promise<void> {
+    const lockKey = `apx:bind-lock:${visitorId}`;
+    const lockValue = `${ownerId}:${Date.now()}`;
+    const acquired = await this.redis.set(lockKey, lockValue, { nx: true, ex: 10 });
+    if (acquired !== "OK") throw new Error("Wallet workspace migration is already in progress");
+    try {
+      const snapshots = await this.listVisitorOrders(visitorId, 50);
+      await Promise.all(snapshots.map((item) => this.saveOwnerOrder({ ...item, ownerId }, ttlSeconds)));
+      await this.redis.set(`apx:migration:${visitorId}:${ownerId}`, true, { ex: ttlSeconds });
+      await this.redis.del(`apx:visitor-orders:${visitorId}`);
+    } finally {
+      await this.redis.eval<unknown[], number>(
+        "if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) end return 0",
+        [lockKey],
+        [lockValue],
+      );
+    }
   }
 
   async consumeGlobalDailyBudget(

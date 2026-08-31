@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { MemoryDemoSafetyStore } from "./store";
 import type { DemoOrderSnapshot } from "@/lib/okx-demo/contracts";
+import { walletOwnerId } from "@/server/identity/owner";
 
 const snapshot: DemoOrderSnapshot = {
   visitorId: "visitor-a",
@@ -81,6 +82,23 @@ describe("durable demo safety state contract", () => {
 
     await store.removeVisitorOrder("visitor-a", older.ordId);
     await expect(store.listVisitorOrders("visitor-a", 50)).resolves.toEqual([synced]);
+  });
+
+  it("migrates a legacy visitor workspace to a wallet owner idempotently", async () => {
+    const store = new MemoryDemoSafetyStore(() => 1_000_000);
+    const walletOwner = walletOwnerId("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48");
+    const older = { ...snapshot, ordId: "161803", clOrdId: "apx-older", createdAt: 999_000, updatedAt: 999_000 };
+    await store.saveVisitorOrder(older, 300);
+    await store.saveVisitorOrder(snapshot, 300);
+
+    await store.migrateVisitorWorkspace("visitor-a", walletOwner, 300);
+    await store.migrateVisitorWorkspace("visitor-a", walletOwner, 300);
+
+    const migrated = await store.listOwnerOrders(walletOwner, 50);
+    expect(migrated.map((order) => order.ordId)).toEqual(["271828", "161803"]);
+    expect(migrated.every((order) => order.ownerId === walletOwner)).toBe(true);
+    await expect(store.listVisitorOrders("visitor-a", 50)).resolves.toEqual([]);
+    await expect(store.countOwnerOpenOrders(walletOwner)).resolves.toBe(2);
   });
 
   it("enforces atomic global daily order and notional budgets", async () => {
