@@ -1,8 +1,9 @@
 "use client";
 
+import { ChartLineUp, ListBullets, Swap, Wallet } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChartLineUp, ListBullets, Swap, Wallet } from "@phosphor-icons/react";
+
 import { getActiveNav } from "@/lib/trading";
 
 const nav = [

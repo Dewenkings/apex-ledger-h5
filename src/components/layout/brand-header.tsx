@@ -1,7 +1,7 @@
 import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 
-import { PaperBadge } from "./ui";
+import { PaperBadge } from "@/components/ui";
 
 export function BrandHeader({ title, subtitle, back }: { title?: string; subtitle?: string; back?: string }) {
   return <header className="topbar">

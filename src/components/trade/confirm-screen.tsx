@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { AppShell } from "@/components/app-shell";
-import { BrandHeader } from "@/components/brand-header";
+import { AppShell } from "@/components/layout/app-shell";
+import { BrandHeader } from "@/components/layout/brand-header";
 import { PaperBadge } from "@/components/ui";
 import type { TradingPairConfig } from "@/lib/trading/pairs";
 

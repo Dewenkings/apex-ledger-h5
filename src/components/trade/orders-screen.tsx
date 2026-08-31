@@ -3,8 +3,8 @@
 import { DownloadSimple, Receipt } from "@phosphor-icons/react";
 import { useState } from "react";
 
-import { AppShell } from "@/components/app-shell";
-import { BrandHeader } from "@/components/brand-header";
+import { AppShell } from "@/components/layout/app-shell";
+import { BrandHeader } from "@/components/layout/brand-header";
 import { useDemoAccount } from "./use-demo-account";
 
 export function OrdersScreen() {

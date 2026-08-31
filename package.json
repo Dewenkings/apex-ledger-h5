@@ -12,11 +12,13 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@metamask/connect-evm": "^2.1.1",
     "@phosphor-icons/react": "^2.1.10",
     "@reown/appkit": "^1.8.23",
     "@reown/appkit-adapter-wagmi": "^1.8.23",
     "@tanstack/react-query": "^5.102.8",
     "@upstash/redis": "^1.38.3",
+    "@walletconnect/ethereum-provider": "^2.23.10",
     "lightweight-charts": "^5.2.1",
     "next": "^16.0.0",
     "react": "^19.0.0",

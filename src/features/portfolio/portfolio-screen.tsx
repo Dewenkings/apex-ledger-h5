@@ -4,8 +4,8 @@ import { Plus, ShieldCheck } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useAccount } from "wagmi";
 
-import { AppShell } from "@/components/app-shell";
-import { BrandHeader } from "@/components/brand-header";
+import { AppShell } from "@/components/layout/app-shell";
+import { BrandHeader } from "@/components/layout/brand-header";
 import { useDemoAccount } from "@/components/trade/use-demo-account";
 import { useWalletAssets } from "@/features/wallet/use-wallet-assets";
 import { DemoBalanceCard } from "./demo-balance-card";

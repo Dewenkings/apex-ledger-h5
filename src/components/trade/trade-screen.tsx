@@ -4,8 +4,8 @@ import { ArrowRight, ShieldCheck } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
 
-import { AppShell } from "@/components/app-shell";
-import { BrandHeader } from "@/components/brand-header";
+import { AppShell } from "@/components/layout/app-shell";
+import { BrandHeader } from "@/components/layout/brand-header";
 import { estimatePaperOrder } from "@/lib/trading";
 import type { TradingPairConfig } from "@/lib/trading/pairs";
 import { TradeMarketPanel } from "./trade-market-panel";

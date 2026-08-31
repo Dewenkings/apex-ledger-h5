@@ -5,7 +5,7 @@ import { ArrowRight, CheckCircle, ShieldCheck, SpinnerGap, Wallet, X } from "@ph
 import Link from "next/link";
 import { useDisconnect } from "wagmi";
 
-import { AppShell } from "@/components/app-shell";
+import { AppShell } from "@/components/layout/app-shell";
 import { useSiweSession } from "@/features/auth/use-siwe-session";
 
 const CHAIN_NAMES: Record<number, string> = { 1: "Ethereum", 8453: "Base", 42161: "Arbitrum" };

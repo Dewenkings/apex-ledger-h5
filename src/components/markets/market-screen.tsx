@@ -4,8 +4,8 @@ import { Bell, Clock, MagnifyingGlass, SlidersHorizontal, WarningCircle } from "
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 
-import { AppShell } from "@/components/app-shell";
-import { BrandHeader } from "@/components/brand-header";
+import { AppShell } from "@/components/layout/app-shell";
+import { BrandHeader } from "@/components/layout/brand-header";
 import { AssetMark, Change, FavoriteMarketCard, Sparkline } from "@/components/ui";
 import { filterMarkets } from "@/lib/trading";
 import { getPairBySymbol } from "@/lib/trading/pairs";

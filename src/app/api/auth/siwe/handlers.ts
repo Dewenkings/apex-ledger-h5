@@ -43,7 +43,11 @@ export function createSiweHandlers(options: HandlerOptions = {}) {
   const now = options.now ?? Date.now;
   const createVisitorId = options.visitorId ?? randomUUID;
   const secure = environment.NODE_ENV === "production";
-  const service = options.service ?? createDefaultService(environment);
+  let service = options.service;
+  const getService = () => {
+    service ??= createDefaultService(environment);
+    return service;
+  };
   const canonicalOrigin = environment.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
 
   return {
@@ -55,7 +59,7 @@ export function createSiweHandlers(options: HandlerOptions = {}) {
       const input = challengeSchema.safeParse(await readJson(request));
       if (!input.success) return errorJson("invalid_request", "Wallet login request is invalid", 400);
       try {
-        const challenge = await service.issueChallenge(input.data, {
+        const challenge = await getService().issueChallenge(input.data, {
           visitorId: visitorResult.visitor.visitorId,
           origin: canonicalOrigin ?? new URL(request.url).origin,
           rateScope: hashClientIp(request),
@@ -81,7 +85,7 @@ export function createSiweHandlers(options: HandlerOptions = {}) {
       const input = verifySchema.safeParse(await readJson(request));
       if (!input.success) return errorJson("invalid_request", "SIWE verification request is invalid", 400);
       try {
-        const result = await service.verify(input.data, {
+        const result = await getService().verify(input.data, {
           visitorId: visitor.visitorId,
           origin: canonicalOrigin ?? new URL(request.url).origin,
         });
@@ -103,7 +107,7 @@ export function createSiweHandlers(options: HandlerOptions = {}) {
       const sessionId = readWalletSessionId(request.headers.get("cookie"));
       if (!visitor || !sessionId) return Response.json({ authenticated: false }, { headers: NO_STORE });
       try {
-        const session = await service.getSession(sessionId);
+        const session = await getService().getSession(sessionId);
         return Response.json(toPublicSession(session, visitor.visitorId), { headers: NO_STORE });
       } catch {
         return errorJson("auth_unavailable", "Wallet session is temporarily unavailable", 503);
@@ -115,7 +119,7 @@ export function createSiweHandlers(options: HandlerOptions = {}) {
       if (forbidden) return forbidden;
       const sessionId = readWalletSessionId(request.headers.get("cookie"));
       try {
-        if (sessionId) await service.logout(sessionId);
+        if (sessionId) await getService().logout(sessionId);
       } catch {
         return errorJson("auth_unavailable", "Wallet logout is temporarily unavailable", 503);
       }

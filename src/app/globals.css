@@ -293,6 +293,9 @@
   .wallet-options button.selected svg { @apply text-primary; }
   .legal { @apply m-3.5 text-center text-[9px] leading-normal text-muted; }
   .profile-card { @apply grid grid-cols-[58px_1fr_38px] items-center gap-3 rounded-2xl border border-line p-4; background: linear-gradient(145deg, #19201d, #121619); }
+  .identity-card { @apply mb-5 grid grid-cols-[58px_1fr] items-center gap-3 rounded-2xl border border-line p-4; background: linear-gradient(145deg, #19201d, #121619); }
+  .identity-card h2 { @apply my-1 text-[18px]; }
+  .identity-safety { @apply text-[9px] text-primary; }
   .profile-avatar { @apply grid size-[58px] place-items-center rounded-[18px] bg-primary/[0.07] text-primary; }
   .profile-avatar svg { @apply size-[42px]; }
   .profile-card h2 { @apply mt-0 mb-[5px] text-[17px]; }
@@ -305,6 +308,18 @@
   .setting-row:nth-child(2) { @apply rounded-t-xl; }
   .setting-row:last-child { @apply rounded-b-xl border-b-0; }
   .setting-row:only-of-type { @apply rounded-xl; }
+  .settings-state { @apply rounded-full border px-2 py-1 text-[8px] font-bold; }
+  .settings-state.positive { @apply border-primary/25 bg-primary/[0.06] text-primary; }
+  .settings-state.muted { @apply border-line bg-surface-raised text-muted; }
+  .settings-action { @apply rounded-lg border border-line bg-surface-raised px-2.5 py-1.5 text-[9px] font-bold text-primary; }
+  .identity-boundary { @apply mt-5 flex gap-3 rounded-xl border border-warning/20 bg-warning/[0.05] p-3; }
+  .identity-boundary > svg { @apply size-5 shrink-0 text-warning; }
+  .identity-boundary strong { @apply block text-[10px] text-warning; }
+  .identity-boundary span { @apply mt-1 block text-[9px] leading-relaxed text-muted; }
+  .settings-buttons { @apply mt-4 grid grid-cols-2 gap-2; }
+  .settings-buttons button { @apply flex min-h-11 items-center justify-center gap-1.5 rounded-xl border border-line bg-surface text-[9px] font-bold text-muted; }
+  .settings-buttons button:first-child { @apply border-primary/20 text-primary; }
+  .settings-buttons button:disabled { @apply opacity-40; }
   .setting-row strong { @apply text-[11px]; }
   .setting-row small { @apply mt-1 text-[9px]; }
   .setting-row > svg { @apply w-[18px] text-muted; }

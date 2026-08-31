@@ -24,7 +24,7 @@ describe("Tailwind CSS foundation", () => {
   });
 
   it("uses Tailwind utilities in the shared application shell", () => {
-    const shell = readFileSync(resolve(root, "src/components/app-shell.tsx"), "utf8");
+    const shell = readFileSync(resolve(root, "src/components/layout/app-shell.tsx"), "utf8");
 
     expect(shell).toContain("min-h-dvh");
     expect(shell).toContain("bg-base");

@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@reown/appkit/react", () => ({ useAppKit: () => ({ open: mocks.open }) }));
 vi.mock("wagmi", () => ({ useDisconnect: () => ({ disconnect: mocks.disconnect }) }));
-vi.mock("@/components/app-shell", () => ({ AppShell: ({ children }: { children: React.ReactNode }) => <main>{children}</main> }));
+vi.mock("@/components/layout/app-shell", () => ({ AppShell: ({ children }: { children: React.ReactNode }) => <main>{children}</main> }));
 vi.mock("@/features/auth/use-siwe-session", () => ({
   useSiweSession: () => ({ ...mocks.session, signIn: mocks.signIn, logout: mocks.logout }),
 }));

@@ -44,6 +44,22 @@ function service(): SiweHandlerService {
 }
 
 describe("SIWE routes", () => {
+  it("defers Redis initialization and fails closed at request time", async () => {
+    const handlers = createSiweHandlers({
+      environment: { SESSION_SECRET: "test-secret", NODE_ENV: "test" },
+      now: () => 1_000_000_000_000,
+      visitorId: () => "visitor-1",
+    });
+    const response = await handlers.nonce(new Request("https://apex.example/api/auth/siwe/nonce", {
+      method: "POST",
+      headers: { Origin: "https://apex.example", "Content-Type": "application/json" },
+      body: JSON.stringify({ address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", chainId: 1 }),
+    }));
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ code: "auth_unavailable", error: "Wallet login is temporarily unavailable" });
+  });
+
   it("creates an anonymous visitor while issuing a challenge", async () => {
     const mockService = service();
     const handlers = createSiweHandlers({ service: mockService, environment, now: () => 1_000_000_000_000, visitorId: () => "visitor-1" });
