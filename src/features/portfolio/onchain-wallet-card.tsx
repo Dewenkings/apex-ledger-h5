@@ -1,0 +1,50 @@
+import { ArrowRight, LinkSimple, SpinnerGap, WarningCircle } from "@phosphor-icons/react";
+import Link from "next/link";
+
+import { getWalletChainName, type WalletAssetsState, type WalletAsset } from "@/features/wallet/use-wallet-assets";
+
+export function OnchainWalletCard({
+  connected,
+  address,
+  chainId,
+  state,
+  assets,
+}: {
+  connected: boolean;
+  address?: string;
+  chainId?: number;
+  state: WalletAssetsState;
+  assets: WalletAsset[];
+}) {
+  return (
+    <section className="ledger-section onchain" aria-labelledby="onchain-ledger-title">
+      <div className="ledger-heading">
+        <div><span className="eyebrow">PUBLIC RPC BALANCES</span><h2 id="onchain-ledger-title">ON-CHAIN · READ ONLY</h2></div>
+        <span className="ledger-source wallet">WALLET</span>
+      </div>
+      {!connected ? (
+        <Link className="wallet-connect-card" href="/connect-wallet" aria-label="连接钱包读取链上余额"><LinkSimple /><div><strong>连接钱包读取链上余额</strong><span>仅访问公开地址与白名单 Token</span></div><ArrowRight /></Link>
+      ) : state === "loading" ? (
+        <div className="wallet-chain-state" role="status"><SpinnerGap className="wallet-spinner" />正在读取链上余额…</div>
+      ) : state === "error" ? (
+        <div className="wallet-chain-state error" role="alert"><WarningCircle />链上余额暂时不可用</div>
+      ) : (
+        <>
+          <div className="wallet-chain-meta"><div><span>{getWalletChainName(chainId)}</span><strong className="mono">{shortAddress(address)}</strong></div><small>{state === "stale" ? "正在刷新 · 显示上次结果" : "RPC 已同步"}</small></div>
+          <div className="asset-list compact">
+            {assets.length ? assets.map((asset) => <div className="asset-row" key={`${asset.chainId}:${asset.symbol}`}><div><strong>{asset.symbol}</strong><small className="muted block">链上公开余额</small></div><strong className="mono">{trimBalance(asset.balance)} {asset.symbol}</strong></div>) : <div className="empty">当前白名单资产余额为 0</div>}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function shortAddress(address?: string): string {
+  return address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "—";
+}
+
+function trimBalance(value: string): string {
+  const [integer, decimal = ""] = value.split(".");
+  return decimal ? `${integer}.${decimal.slice(0, 6)}`.replace(/\.?0+$/, "") : integer;
+}

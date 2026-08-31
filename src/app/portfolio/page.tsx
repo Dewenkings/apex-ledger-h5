@@ -1,2 +1,2 @@
-import { PortfolioScreen } from "@/components/screens";
+import { PortfolioScreen } from "@/features/portfolio/portfolio-screen";
 export default function Page() { return <PortfolioScreen />; }

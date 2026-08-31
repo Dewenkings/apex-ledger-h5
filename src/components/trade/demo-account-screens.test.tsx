@@ -4,6 +4,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { OrdersScreen, PortfolioScreen } from "@/components/screens";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/orders" }));
+vi.mock("wagmi", () => ({
+  useAccount: () => ({ address: undefined, chainId: undefined, isConnected: false }),
+  useBalance: () => ({ data: undefined, isLoading: false, isFetching: false, isError: false, dataUpdatedAt: 0 }),
+  useReadContracts: () => ({ data: undefined, isLoading: false, isFetching: false, isError: false, dataUpdatedAt: 0 }),
+}));
 
 const order = { instrument: "ETH-USDT", ordId: "271828", clOrdId: "apx-owned", side: "buy", orderType: "limit", price: "3500", size: "0.02", filledSize: "0", averagePrice: "", status: "live", createdAt: 1788048000000, updatedAt: 1788048000000 };
 const fill = { instrument: "ETH-USDT", ordId: "271828", clOrdId: "apx-owned", tradeId: "314", side: "buy", fillPrice: "3500", fillSize: "0.01", fee: "-0.02", feeCurrency: "USDT", timestamp: 1788048000000 };

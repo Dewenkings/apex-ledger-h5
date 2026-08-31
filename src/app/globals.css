@@ -217,6 +217,7 @@
 
   .balance-card { @apply relative overflow-hidden rounded-[18px] border border-[#314038] p-5; background: radial-gradient(circle at 90% 0, #44e0921b, transparent 40%), linear-gradient(145deg, #1b2420, #111618); }
   .balance-card h2 { @apply mt-3 mb-[5px] text-[34px]; }
+  .balance-card h3 { @apply mt-3 mb-[5px] text-[30px]; }
   .balance-card > .muted { @apply ml-2 text-[11px]; }
   .balance-card .sparkline { @apply mt-2 h-[72px]; }
   .quick-actions { @apply my-3.5 grid grid-cols-3 gap-2.5; }
@@ -225,6 +226,30 @@
   .allocation-bar { @apply mb-3 flex h-[7px] gap-0.5 overflow-hidden rounded-full; }
   .allocation-bar i { @apply h-full; }
   .asset-list, .activity-list { @apply overflow-hidden rounded-card border border-line bg-surface; }
+  .asset-list.compact { @apply mt-3; }
+  .ledger-separation-note { @apply mb-5 flex gap-3 rounded-xl border border-primary/20 bg-primary/[0.05] p-3; }
+  .ledger-separation-note > svg { @apply size-5 shrink-0 text-primary; }
+  .ledger-separation-note strong { @apply block text-[11px] text-primary; }
+  .ledger-separation-note span { @apply mt-1 block text-[9px] leading-relaxed text-muted; }
+  .ledger-section { @apply rounded-[20px] border border-line bg-[#0e1214] p-3; }
+  .ledger-section.onchain { @apply border-[#334047]; background: linear-gradient(145deg, #10171a, #0c1012); }
+  .ledger-heading { @apply mb-3 flex items-start justify-between px-1; }
+  .ledger-heading h2 { @apply mt-1 mb-0 font-mono text-[12px] tracking-[0.03em]; }
+  .ledger-source { @apply rounded-full border px-2 py-1 font-mono text-[8px] font-bold tracking-[0.12em]; }
+  .ledger-source.demo { @apply border-paper/30 bg-paper/[0.07] text-paper; }
+  .ledger-source.wallet { @apply border-[#7194a4]/30 bg-[#7194a4]/[0.07] text-[#9bc0d0]; }
+  .ledger-divider { @apply my-3 flex items-center gap-2 font-mono text-[7px] tracking-[0.18em] text-[#58645f] before:h-px before:flex-1 before:bg-line after:h-px after:flex-1 after:bg-line; }
+  .wallet-connect-card { @apply grid grid-cols-[38px_1fr_18px] items-center gap-3 rounded-xl border border-dashed border-[#48606a] bg-[#11191c] p-4 text-foreground; }
+  .wallet-connect-card > svg:first-child { @apply size-6 text-[#9bc0d0]; }
+  .wallet-connect-card > svg:last-child { @apply text-muted; }
+  .wallet-connect-card strong { @apply block text-[11px]; }
+  .wallet-connect-card span { @apply mt-1 block text-[9px] text-muted; }
+  .wallet-chain-state { @apply flex min-h-20 items-center justify-center gap-2 rounded-xl border border-line bg-surface text-[10px] text-muted; }
+  .wallet-chain-state.error { @apply border-danger/20 bg-danger/[0.04] text-danger; }
+  .wallet-chain-meta { @apply flex items-end justify-between rounded-xl border border-line bg-surface px-3 py-2.5; }
+  .wallet-chain-meta span { @apply block text-[10px] font-bold; }
+  .wallet-chain-meta strong { @apply mt-1 block text-[9px] text-muted; }
+  .wallet-chain-meta small { @apply text-[8px] text-[#759183]; }
   .asset-row { @apply flex items-center justify-between border-b border-line p-3.5 last:border-0; }
   .asset-row > div:last-child { @apply text-right; }
   .asset-row strong { @apply text-xs; }

@@ -14,7 +14,7 @@ import { markets } from "@/lib/data";
 export { TradeScreen } from "./trade/trade-screen";
 export { ConfirmScreen } from "./trade/confirm-screen";
 export { OrdersScreen } from "./trade/orders-screen";
-export { PortfolioScreen } from "./trade/portfolio-screen";
+export { PortfolioScreen } from "@/features/portfolio/portfolio-screen";
 export { ConnectWalletScreen } from "@/features/wallet/connect-wallet-screen";
 
 export function AssetDetailScreen() {
