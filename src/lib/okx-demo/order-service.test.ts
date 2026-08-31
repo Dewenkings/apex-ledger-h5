@@ -3,7 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { MemoryDemoSafetyStore } from "@/lib/demo-access/store";
-import type { DemoOrder } from "./contracts";
+import type { DemoOrder, DemoOrderSnapshot } from "./contracts";
 import { OkxDemoError } from "./client";
 import { OkxDemoOrderService } from "./order-service";
 
@@ -31,6 +31,16 @@ const acceptedOrder: DemoOrder = {
   updatedAt: 1788048000000,
 };
 
+function snapshot(overrides: Partial<DemoOrderSnapshot> = {}): DemoOrderSnapshot {
+  return {
+    ...acceptedOrder,
+    visitorId: session.visitorId,
+    syncState: "pending",
+    lastSyncedAt: null,
+    ...overrides,
+  };
+}
+
 function gateway(overrides: Record<string, unknown> = {}) {
   return {
     placeOrder: vi.fn(async (order) => ({ ordId: "271828", clOrdId: order.clOrdId, accepted: true as const })),
@@ -45,6 +55,26 @@ function gateway(overrides: Record<string, unknown> = {}) {
 }
 
 describe("OkxDemoOrderService", () => {
+  it("keeps an accepted order visible when account lists are empty", async () => {
+    const store = new MemoryDemoSafetyStore(() => 1788048000000);
+    const client = gateway();
+    const service = new OkxDemoOrderService(client, store, {}, () => 1788048000000);
+
+    const placed = await service.place(session, input, "ledger-request", "ip-hash");
+    client.getOrder.mockResolvedValue({ ...acceptedOrder, clOrdId: placed.clOrdId });
+
+    await expect(service.listOrders(session)).resolves.toEqual([
+      expect.objectContaining({
+        ordId: placed.ordId,
+        visitorId: session.visitorId,
+        syncState: "synced",
+      }),
+    ]);
+    expect(client.listPendingOrders).not.toHaveBeenCalled();
+    expect(client.listOrderHistory).not.toHaveBeenCalled();
+    expect(client.getOrder).toHaveBeenCalledWith({ instrument: "ETH-USDT", ordId: placed.ordId });
+  });
+
   it("places one bounded order with a session-owned idempotent client ID", async () => {
     const store = new MemoryDemoSafetyStore(() => 1788048000000);
     const client = gateway();
@@ -63,9 +93,10 @@ describe("OkxDemoOrderService", () => {
       px: "3500",
       clOrdId: result.clOrdId,
     });
-    await expect(store.getOrderOwner("271828")).resolves.toEqual({
-      sessionId: "session-123",
+    await expect(store.getVisitorOrder("271828")).resolves.toMatchObject({
+      visitorId: "visitor-123",
       clOrdId: result.clOrdId,
+      syncState: "pending",
     });
   });
 
@@ -75,7 +106,7 @@ describe("OkxDemoOrderService", () => {
     const service = new OkxDemoOrderService(client, store);
 
     const first = await service.place(session, input, "same-request", "ip-hash");
-    const replay = await service.place(session, input, "same-request", "ip-hash");
+    const replay = await service.place({ ...session, sessionId: "session-new" }, input, "same-request", "ip-hash");
 
     expect(replay).toEqual(first);
     expect(client.placeOrder).toHaveBeenCalledTimes(1);
@@ -107,59 +138,61 @@ describe("OkxDemoOrderService", () => {
       .rejects.toMatchObject({ category: "rate_limited" });
 
     const secondStore = new MemoryDemoSafetyStore(() => 1788048000000);
-    await secondStore.saveOrderOwner("existing", { sessionId: session.sessionId, clOrdId: "apxexisting" }, 300);
+    await secondStore.saveVisitorOrder(snapshot({ ordId: "existing", clOrdId: "apxexisting" }), 300);
     const capped = new OkxDemoOrderService(gateway(), secondStore, { maxOpenOrders: 1 });
     await expect(capped.place(session, input, "request-3", "other-ip"))
       .rejects.toMatchObject({ category: "open_order_limit" });
   });
 
-  it("filters account-wide orders/fills and denies cross-session cancellation", async () => {
+  it("isolates visitor ledgers and falls back to a stale snapshot when exact sync fails", async () => {
     const store = new MemoryDemoSafetyStore(() => 1788048000000);
-    await store.saveOrderOwner("owned", { sessionId: session.sessionId, clOrdId: "apxowned" }, 300);
-    await store.saveOrderOwner("other", { sessionId: "session-other", clOrdId: "apxother" }, 300);
-    const owned = { ...acceptedOrder, ordId: "owned", clOrdId: "apxowned" };
-    const other = { ...acceptedOrder, ordId: "other", clOrdId: "apxother" };
+    const owned = snapshot({ ordId: "owned", clOrdId: "apxowned", lastSyncedAt: 1788047000000 });
+    const other = snapshot({ visitorId: "visitor-other", ordId: "other", clOrdId: "apxother" });
+    await store.saveVisitorOrder(owned, 300);
+    await store.saveVisitorOrder(other, 300);
     const client = gateway({
-      listPendingOrders: vi.fn(async () => [owned, other]),
-      listOrderHistory: vi.fn(async () => []),
-      listFills: vi.fn(async () => [
-        { instrument: "ETH-USDT", ordId: "owned", clOrdId: "apxowned", tradeId: "1", side: "buy", fillPrice: "3500", fillSize: "0.01", fee: "-0.1", feeCurrency: "USDT", timestamp: 1788048000000 },
-        { instrument: "ETH-USDT", ordId: "other", clOrdId: "apxother", tradeId: "2", side: "buy", fillPrice: "3500", fillSize: "0.01", fee: "-0.1", feeCurrency: "USDT", timestamp: 1788048000000 },
-      ]),
-      getOrder: vi.fn(async () => owned),
+      getOrder: vi.fn(async () => { throw new OkxDemoError("upstream_failure", "unavailable"); }),
     });
     const service = new OkxDemoOrderService(client, store);
 
-    await expect(service.listOrders(session)).resolves.toEqual([owned]);
-    await expect(service.listFills(session)).resolves.toEqual([expect.objectContaining({ ordId: "owned" })]);
-    await expect(service.cancelOwnedOrder({ ...session, sessionId: "session-other" }, "owned", "ETH-USDT"))
-      .rejects.toMatchObject({ category: "forbidden" });
-    await expect(service.cancelOwnedOrder(session, "owned", "ETH-USDT")).resolves.toMatchObject({ canceled: true });
+    await expect(service.listOrders(session)).resolves.toEqual([
+      expect.objectContaining({ ordId: "owned", syncState: "stale", lastSyncedAt: 1788047000000 }),
+    ]);
+    await expect(service.listOrders({ ...session, visitorId: "visitor-other" })).resolves.toEqual([
+      expect.objectContaining({ ordId: "other", syncState: "stale" }),
+    ]);
   });
 
-  it("logs non-sensitive order visibility counts for production diagnostics", async () => {
+  it("updates exact order state and removes a client-order mismatch", async () => {
     const store = new MemoryDemoSafetyStore(() => 1788048000000);
-    await store.saveOrderOwner("owned", { sessionId: session.sessionId, clOrdId: "expected-client-id" }, 300);
+    await store.saveVisitorOrder(snapshot({ ordId: "owned", clOrdId: "expected-client-id" }), 300);
     const client = gateway({
-      listPendingOrders: vi.fn(async () => [{ ...acceptedOrder, ordId: "owned", clOrdId: "different-client-id" }]),
-      listOrderHistory: vi.fn(async () => []),
+      getOrder: vi.fn(async () => ({ ...acceptedOrder, ordId: "owned", clOrdId: "expected-client-id", status: "filled", filledSize: "0.02" })),
     });
-    const diagnostic = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const service = new OkxDemoOrderService(client, store, {}, () => 1788048000000);
 
-    try {
-      const service = new OkxDemoOrderService(client, store);
-      await expect(service.listOrders(session)).resolves.toEqual([]);
-      expect(diagnostic).toHaveBeenCalledWith("Demo order visibility", {
-        pending: 1,
-        history: 0,
-        unique: 1,
-        ownersFound: 1,
-        sessionMatches: 1,
-        clientOrderMatches: 0,
-        visible: 0,
-      });
-    } finally {
-      diagnostic.mockRestore();
+    await expect(service.listOrders(session)).resolves.toEqual([
+      expect.objectContaining({ ordId: "owned", status: "filled", filledSize: "0.02", syncState: "synced", lastSyncedAt: 1788048000000 }),
+    ]);
+
+    await store.saveVisitorOrder(snapshot({ ordId: "mismatch", clOrdId: "expected" }), 300);
+    client.getOrder.mockResolvedValue({ ...acceptedOrder, ordId: "mismatch", clOrdId: "different" });
+    await service.listOrders(session);
+    await expect(store.getVisitorOrder("mismatch")).resolves.toBeNull();
+  });
+
+  it("stops at the global daily budget before calling OKX", async () => {
+    const store = new MemoryDemoSafetyStore(() => 1788048000000);
+    const limits = { orders: 100, notionalCents: 1_000_000 };
+    const day = new Date(1788048000000).toISOString().slice(0, 10);
+    for (let index = 0; index < 100; index += 1) {
+      await store.consumeGlobalDailyBudget(day, 1, limits, 90_000);
     }
+    const client = gateway();
+    const service = new OkxDemoOrderService(client, store, {}, () => 1788048000000);
+
+    await expect(service.place(session, input, "over-global-limit", "ip-hash"))
+      .rejects.toMatchObject({ category: "global_demo_limit" });
+    expect(client.placeOrder).not.toHaveBeenCalled();
   });
 });

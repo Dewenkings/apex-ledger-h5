@@ -10,6 +10,7 @@ import type {
   DemoCancelReceipt,
   DemoFill,
   DemoOrder,
+  DemoOrderSnapshot,
   DemoOrderReceipt,
   PlaceDemoOrderInput,
 } from "./contracts";
@@ -29,6 +30,7 @@ type ServiceErrorCategory =
   | "idempotency_conflict"
   | "request_in_progress"
   | "rate_limited"
+  | "global_demo_limit"
   | "open_order_limit"
   | "forbidden"
   | "unknown_outcome";
@@ -56,8 +58,11 @@ const DEFAULT_POLICY: OrderServicePolicy = {
   rateWindowSeconds: 60,
   maxOpenOrders: 5,
   idempotencyTtlSeconds: 5 * 60,
-  ownershipTtlSeconds: 24 * 60 * 60,
+  ownershipTtlSeconds: 30 * 24 * 60 * 60,
 };
+
+const GLOBAL_DAILY_LIMITS = { orders: 100, notionalCents: 1_000_000 };
+const GLOBAL_BUDGET_TTL_SECONDS = 2 * 24 * 60 * 60;
 
 export class OkxDemoOrderService {
   private readonly policy: OrderServicePolicy;
@@ -66,6 +71,7 @@ export class OkxDemoOrderService {
     private readonly client: OkxDemoGateway,
     private readonly store: DemoSafetyStore,
     policy: Partial<OrderServicePolicy> = {},
+    private readonly now: () => number = Date.now,
   ) {
     this.policy = { ...DEFAULT_POLICY, ...policy };
   }
@@ -83,17 +89,17 @@ export class OkxDemoOrderService {
     }
 
     const [sessionRate, ipRate] = await Promise.all([
-      this.store.consumeRateLimit(`session:${session.sessionId}`, this.policy.sessionRateLimit, this.policy.rateWindowSeconds),
+      this.store.consumeRateLimit(`visitor:${session.visitorId}`, this.policy.sessionRateLimit, this.policy.rateWindowSeconds),
       this.store.consumeRateLimit(`ip:${clientIpKey}`, this.policy.ipRateLimit, this.policy.rateWindowSeconds),
     ]);
     if (!sessionRate.allowed || !ipRate.allowed) {
       throw new DemoOrderServiceError("rate_limited", "Demo order rate limit exceeded");
     }
-    if (await this.store.countSessionOpenOrders(session.sessionId) >= this.policy.maxOpenOrders) {
+    if (await this.store.countVisitorOpenOrders(session.visitorId) >= this.policy.maxOpenOrders) {
       throw new DemoOrderServiceError("open_order_limit", "Too many open Demo orders");
     }
 
-    const idempotencyKey = `${session.sessionId}:${requestId}`;
+    const idempotencyKey = `${session.visitorId}:${requestId}`;
     const requestHash = hashCanonical(validation.data);
     const claim = await this.store.claimIdempotency(
       idempotencyKey,
@@ -106,7 +112,19 @@ export class OkxDemoOrderService {
       throw new DemoOrderServiceError("request_in_progress", "The Demo order request is still being reconciled");
     }
 
-    const clOrdId = createClientOrderId(session.sessionId, requestId);
+    const notionalCents = calculateNotionalCents(validation.data);
+    const day = new Date(this.now()).toISOString().slice(0, 10);
+    const globalBudget = await this.store.consumeGlobalDailyBudget(
+      day,
+      notionalCents,
+      GLOBAL_DAILY_LIMITS,
+      GLOBAL_BUDGET_TTL_SECONDS,
+    );
+    if (!globalBudget.allowed) {
+      throw new DemoOrderServiceError("global_demo_limit", "The public Demo daily limit has been reached");
+    }
+
+    const clOrdId = createClientOrderId(session.visitorId, requestId);
     const submission = toSubmission(validation.data, clOrdId);
     let receipt: DemoOrderReceipt;
     try {
@@ -124,46 +142,60 @@ export class OkxDemoOrderService {
       }
     }
 
+    const createdAt = this.now();
+    const pending: DemoOrderSnapshot = {
+      visitorId: session.visitorId,
+      instrument: validation.data.instrument,
+      ordId: receipt.ordId,
+      clOrdId: receipt.clOrdId,
+      side: validation.data.side,
+      orderType: validation.data.type,
+      price: validation.data.price ?? "",
+      size: validation.data.amount,
+      filledSize: "0",
+      averagePrice: "",
+      status: "live",
+      createdAt,
+      updatedAt: createdAt,
+      syncState: "pending",
+      lastSyncedAt: null,
+    };
     await Promise.all([
-      this.store.saveOrderOwner(receipt.ordId, { sessionId: session.sessionId, clOrdId: receipt.clOrdId }, this.policy.ownershipTtlSeconds),
+      this.store.saveVisitorOrder(pending, this.policy.ownershipTtlSeconds),
       this.store.saveIdempotencyResponse(idempotencyKey, receipt),
     ]);
+    try {
+      const synced = await this.client.getOrder({ instrument: pending.instrument, ordId: pending.ordId });
+      if (synced.clOrdId === pending.clOrdId) {
+        await this.store.saveVisitorOrder(toSyncedSnapshot(pending.visitorId, synced, this.now()), this.policy.ownershipTtlSeconds);
+      }
+    } catch {
+      // The accepted snapshot remains visible until the next exact-order reconciliation.
+    }
     return receipt;
   }
 
-  async listOrders(session: DemoSession): Promise<DemoOrder[]> {
-    const [pending, history] = await Promise.all([
-      this.client.listPendingOrders(),
-      this.client.listOrderHistory(),
-    ]);
-    const unique = new Map([...pending, ...history].map((order) => [order.ordId, order]));
-    const visible: DemoOrder[] = [];
-    let ownersFound = 0;
-    let sessionMatches = 0;
-    let clientOrderMatches = 0;
-    for (const order of unique.values()) {
-      const owner = await this.store.getOrderOwner(order.ordId);
-      if (owner) ownersFound += 1;
-      if (owner?.sessionId === session.sessionId) sessionMatches += 1;
-      if (owner?.sessionId !== session.sessionId || owner.clOrdId !== order.clOrdId) continue;
-      clientOrderMatches += 1;
-      visible.push(order);
-      if (order.status === "filled" || order.status === "canceled" || order.status === "rejected") {
-        await this.store.markOrderClosed(order.ordId);
+  async listOrders(session: DemoSession): Promise<DemoOrderSnapshot[]> {
+    const snapshots = await this.store.listVisitorOrders(session.visitorId, 50);
+    const reconciled = await mapWithConcurrency(snapshots, 5, async (snapshot) => {
+      try {
+        const order = await this.client.getOrder({ instrument: snapshot.instrument, ordId: snapshot.ordId });
+        if (order.clOrdId !== snapshot.clOrdId) {
+          await this.store.removeVisitorOrder(session.visitorId, snapshot.ordId);
+          return null;
+        }
+        const synced = toSyncedSnapshot(session.visitorId, order, this.now());
+        await this.store.saveVisitorOrder(synced, this.policy.ownershipTtlSeconds);
+        return synced;
+      } catch {
+        const stale = { ...snapshot, syncState: "stale" as const };
+        await this.store.saveVisitorOrder(stale, this.policy.ownershipTtlSeconds);
+        return stale;
       }
-    }
-    if (visible.length === 0) {
-      console.info("Demo order visibility", {
-        pending: pending.length,
-        history: history.length,
-        unique: unique.size,
-        ownersFound,
-        sessionMatches,
-        clientOrderMatches,
-        visible: visible.length,
-      });
-    }
-    return visible.sort((left, right) => right.updatedAt - left.updatedAt);
+    });
+    return reconciled
+      .filter((snapshot): snapshot is DemoOrderSnapshot => snapshot !== null)
+      .sort((left, right) => right.updatedAt - left.updatedAt);
   }
 
   async listFills(session: DemoSession): Promise<DemoFill[]> {
@@ -228,10 +260,46 @@ function hashCanonical(input: DemoOrderInput): string {
   })).digest("hex");
 }
 
+function calculateNotionalCents(input: DemoOrderInput): number {
+  const quote = input.type === "limit" ? input.price : input.referencePrice;
+  const cents = Math.ceil(Number(input.amount) * Number(quote) * 100);
+  if (!Number.isSafeInteger(cents) || cents <= 0) {
+    throw new DemoOrderServiceError("invalid_order", "Invalid Demo order notional");
+  }
+  return cents;
+}
+
 function isOrderReceipt(value: unknown): value is DemoOrderReceipt {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<DemoOrderReceipt>;
   return candidate.accepted === true
     && typeof candidate.ordId === "string"
     && typeof candidate.clOrdId === "string";
+}
+
+function toSyncedSnapshot(visitorId: string, order: DemoOrder, syncedAt: number): DemoOrderSnapshot {
+  return {
+    ...order,
+    visitorId,
+    syncState: "synced",
+    lastSyncedAt: syncedAt,
+  };
+}
+
+async function mapWithConcurrency<T, R>(
+  values: T[],
+  concurrency: number,
+  mapper: (value: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(values.length);
+  let cursor = 0;
+  async function worker() {
+    while (cursor < values.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await mapper(values[index]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, values.length) }, () => worker()));
+  return results;
 }

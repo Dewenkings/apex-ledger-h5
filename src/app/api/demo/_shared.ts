@@ -91,6 +91,7 @@ export function demoErrorResponse(error: unknown): Response {
       idempotency_conflict: 409,
       request_in_progress: 409,
       rate_limited: 429,
+      global_demo_limit: 429,
       open_order_limit: 429,
       forbidden: 403,
       unknown_outcome: 409,
