@@ -1,11 +1,11 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   open: vi.fn(),
   disconnect: vi.fn(),
   signIn: vi.fn(),
-  logout: vi.fn(),
+  logout: vi.fn().mockResolvedValue(true),
   session: {
     status: "disconnected",
     address: undefined as `0x${string}` | undefined,
@@ -28,6 +28,7 @@ import { ConnectWalletScreen } from "./connect-wallet-screen";
 describe("ConnectWalletScreen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.logout.mockResolvedValue(true);
     Object.assign(mocks.session, {
       status: "disconnected",
       address: undefined,
@@ -64,7 +65,7 @@ describe("ConnectWalletScreen", () => {
     expect(screen.getByText("钱包身份已验证")).toBeInTheDocument();
   });
 
-  it("offers a network switch path and safe disconnect", () => {
+  it("offers a network switch path and safe disconnect", async () => {
     Object.assign(mocks.session, {
       status: "error",
       address: "0x0000000000000000000000000000000000000001",
@@ -78,6 +79,22 @@ describe("ConnectWalletScreen", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "断开钱包" }));
     expect(mocks.logout).toHaveBeenCalledTimes(1);
-    expect(mocks.disconnect).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(mocks.disconnect).toHaveBeenCalledTimes(1));
+  });
+
+  it("prevents duplicate disconnect requests while logout is pending", async () => {
+    Object.assign(mocks.session, { status: "authenticated", address: "0x0000000000000000000000000000000000000001", chainId: 1 });
+    let finishLogout: (value: boolean) => void = () => undefined;
+    mocks.logout.mockReturnValue(new Promise<boolean>((resolve) => { finishLogout = resolve; }));
+    render(<ConnectWalletScreen />);
+    const button = screen.getByRole("button", { name: "断开钱包" });
+
+    fireEvent.click(button);
+    fireEvent.click(button);
+
+    expect(mocks.logout).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "正在断开…" })).toBeDisabled();
+    finishLogout(true);
+    await waitFor(() => expect(mocks.disconnect).toHaveBeenCalledTimes(1));
   });
 });

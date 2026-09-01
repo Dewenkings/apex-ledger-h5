@@ -6,6 +6,7 @@ import { useCallback, useRef, useState, type KeyboardEvent } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { PaperBadge } from "@/components/ui";
+import { WalletAccountControl } from "@/components/wallet/wallet-account-control";
 import { estimatePaperOrder } from "@/lib/trading";
 import type { TradingPairConfig } from "@/lib/trading/pairs";
 import { OrderBookCard } from "./order-book-card";
@@ -61,6 +62,7 @@ export function TradeScreen({ pair }: { pair: TradingPairConfig }) {
         <div className="instrument-actions">
           <span className="spot-badge">现货</span>
           <PaperBadge />
+          <WalletAccountControl compact />
         </div>
       </header>
       <nav className="trade-page-tabs" aria-label="交易对详情" role="tablist">

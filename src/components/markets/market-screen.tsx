@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { AssetMark, Change, FavoriteMarketCard, PaperBadge } from "@/components/ui";
+import { WalletAccountControl } from "@/components/wallet/wallet-account-control";
 import { filterMarkets } from "@/lib/trading";
 import { getPairByInstrument, getPairBySymbol } from "@/lib/trading/pairs";
 import type { SpotMarketSearchResult } from "@/lib/market-data/types";
@@ -82,6 +83,7 @@ export function MarketScreen() {
         <div className="market-header-actions">
           <button ref={searchTriggerRef} type="button" className="icon-button market-search-trigger" aria-label="搜索市场" onClick={() => setIsSearchOpen(true)}><MagnifyingGlass /></button>
           <PaperBadge />
+          <WalletAccountControl compact />
         </div>
       </>}
     </header>

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ConfirmScreen } from "@/components/screens";
@@ -30,6 +30,11 @@ describe("ConfirmScreen OKX Demo submission", () => {
 
     render(<ConfirmScreen pair={tradingPairs[1]} />);
 
+    const summary = screen.getByRole("region", { name: "订单摘要" });
+    expect(summary).toHaveClass("confirm-ticket", "buy");
+    expect(within(summary).getByText("ETH/USDT")).toBeInTheDocument();
+    expect(within(summary).getByText("3500 USDT")).toBeInTheDocument();
+    expect(screen.getAllByText("PAPER LIVE")).toHaveLength(1);
     expect(await screen.findByText("需要演示访问码")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("演示访问码"), { target: { value: "portfolio-only" } });
     fireEvent.click(screen.getByRole("button", { name: "进入 OKX 模拟盘" }));
@@ -37,6 +42,7 @@ describe("ConfirmScreen OKX Demo submission", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "提交到 OKX Demo Trading" }));
 
+    expect(await screen.findByRole("heading", { name: "模拟订单已受理" })).toBeInTheDocument();
     expect(await screen.findByText("271828")).toBeInTheDocument();
     const orderCall = fetcher.mock.calls.find(([url, init]) => String(url).endsWith("/api/demo/orders") && init?.method === "POST");
     expect(orderCall?.[1]?.headers).toEqual(expect.objectContaining({ "Idempotency-Key": expect.any(String) }));

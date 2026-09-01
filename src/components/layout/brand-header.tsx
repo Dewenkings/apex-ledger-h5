@@ -2,6 +2,7 @@ import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 
 import { PaperBadge } from "@/components/ui";
+import { WalletAccountControl } from "@/components/wallet/wallet-account-control";
 
 export function BrandHeader({ title, subtitle, back }: { title?: string; subtitle?: string; back?: string }) {
   return <header className="topbar">
@@ -14,6 +15,6 @@ export function BrandHeader({ title, subtitle, back }: { title?: string; subtitl
         {subtitle && <span className="eyebrow block">{subtitle}</span>}
       </div>
     </div>
-    <PaperBadge />
+    {back ? <PaperBadge /> : <WalletAccountControl />}
   </header>;
 }

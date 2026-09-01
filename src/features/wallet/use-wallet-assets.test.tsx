@@ -58,4 +58,10 @@ describe("useWalletAssets", () => {
     expect(result.current.state).toBe("error");
     expect(result.current.assets).toEqual([]);
   });
+
+  it("does not describe an unsupported network as a synced zero balance", () => {
+    const { result } = renderHook(() => useWalletAssets("0x0000000000000000000000000000000000000001", 137));
+    expect(result.current.state).toBe("unsupported");
+    expect(result.current.assets).toEqual([]);
+  });
 });

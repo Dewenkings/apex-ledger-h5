@@ -128,9 +128,26 @@ describe("useSiweSession", () => {
     const { result } = renderHook(() => useSiweSession(), { wrapper });
     await waitFor(() => expect(result.current.status).toBe("authenticated"));
 
-    await act(() => result.current.logout());
+    let loggedOut = false;
+    await act(async () => { loggedOut = await result.current.logout(); });
 
     expect(mocks.logoutSiwe).toHaveBeenCalledTimes(1);
+    expect(loggedOut).toBe(true);
     expect(result.current.status).toBe("connected");
+  });
+
+  it("reports logout failure so callers keep the connector attached", async () => {
+    mocks.account.address = "0x0000000000000000000000000000000000000001";
+    mocks.account.chainId = 1;
+    mocks.account.isConnected = true;
+    mocks.logoutSiwe.mockRejectedValue(new Error("network unavailable"));
+    const { result } = renderHook(() => useSiweSession(), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe("connected"));
+
+    let loggedOut = true;
+    await act(async () => { loggedOut = await result.current.logout(); });
+
+    expect(loggedOut).toBe(false);
+    expect(result.current.error).toMatch(/未完成/);
   });
 });

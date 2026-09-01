@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { OrdersScreen, PortfolioScreen } from "@/components/screens";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/orders" }));
+vi.mock("@/components/wallet/wallet-account-control", () => ({ WalletAccountControl: () => <button type="button">连接钱包</button> }));
 vi.mock("wagmi", () => ({
   useAccount: () => ({ address: undefined, chainId: undefined, isConnected: false }),
   useBalance: () => ({ data: undefined, isLoading: false, isFetching: false, isError: false, dataUpdatedAt: 0 }),
@@ -67,7 +68,7 @@ describe("OKX Demo account screens", () => {
 
     expect(await screen.findByText("50,000 USDT")).toBeInTheDocument();
     expect(screen.getByText("共享 OKX Demo 虚拟余额")).toBeInTheDocument();
-    expect(screen.getByText("不会代表当前钱包资产")).toBeInTheDocument();
+    expect(screen.getByText("虚拟总权益 · 不代表钱包资产")).toBeInTheDocument();
   });
 
   it("shows a controlled-access state without leaking private data", async () => {

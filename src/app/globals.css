@@ -39,6 +39,18 @@
   .eyebrow { @apply mt-1 text-[10px] font-bold tracking-[0.14em] text-muted; }
   .paper-badge { @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-primary/20 bg-primary/[0.07] px-[9px] py-[7px] font-mono text-[9px] font-bold tracking-[0.08em] text-primary; }
   .paper-badge i { @apply size-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)]; }
+  .wallet-account-trigger { @apply relative inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full border border-line bg-surface px-3 text-[11px] font-bold text-foreground transition-colors; }
+  .wallet-account-trigger:hover { @apply border-primary/35 bg-primary/[0.05]; }
+  .wallet-account-trigger:focus-visible { @apply outline-2 outline-offset-2 outline-primary; }
+  .wallet-account-trigger > svg { @apply size-4 text-primary; }
+  .wallet-account-trigger.connected { @apply pl-1.5; }
+  .wallet-account-trigger.compact { @apply size-11 p-0; }
+  .wallet-account-trigger.compact > span:not(.wallet-account-avatar) { @apply sr-only; }
+  .wallet-account-trigger > i { @apply absolute right-0.5 top-0.5 size-2 rounded-full border-2 border-base bg-warning; }
+  .wallet-account-trigger.authenticated > i { @apply bg-primary; }
+  .wallet-account-avatar { @apply grid size-8 place-items-center rounded-full border border-primary/25 bg-primary/[0.08] text-primary; }
+  .wallet-account-avatar svg { @apply size-4; }
+  .wallet-account-address { @apply max-w-[86px] truncate text-[10px]; }
   .icon-button { @apply grid size-[38px] cursor-pointer place-items-center rounded-full border-0 bg-transparent text-muted hover:bg-surface-high hover:text-foreground; }
   .icon-button svg { @apply size-[21px]; }
   .icon-button:focus-visible, .trade-action:focus-visible, .order-submit:focus-visible { @apply outline-2 outline-offset-2 outline-primary; }
@@ -350,6 +362,68 @@
   .receipt span { @apply flex justify-between text-[11px] text-muted; }
   .receipt b { @apply text-foreground; }
 
+  .confirm-page { @apply pb-5; }
+  .confirm-page .topbar { @apply h-[70px]; }
+  .confirm-page .topbar h1 { @apply text-[18px]; }
+  .confirm-intro { @apply mb-3 flex items-center gap-3 rounded-[12px] border border-primary/15 bg-primary/[0.045] px-3 py-2.5; }
+  .confirm-shield { @apply grid size-10 shrink-0 place-items-center rounded-[11px] border border-primary/20 bg-primary/[0.08] text-primary; }
+  .confirm-shield svg { @apply size-[22px]; }
+  .confirm-intro h2 { @apply m-0 text-[14px]; }
+  .confirm-intro p { @apply mt-1 text-[9px] leading-normal text-muted; }
+  .confirm-ticket { @apply relative overflow-hidden rounded-[15px] border border-line bg-surface-raised p-3.5 shadow-[inset_0_1px_0_#ffffff05]; }
+  .confirm-ticket::before { content: ""; @apply absolute inset-y-0 left-0 w-0.5 bg-primary; }
+  .confirm-ticket.sell::before { @apply bg-danger; }
+  .confirm-ticket-head { @apply flex items-start justify-between border-b border-line pb-3; }
+  .confirm-ticket-head h3 { @apply mt-1 mb-0 text-[17px]; }
+  .confirm-ticket-head > strong { @apply pt-2 font-mono text-[11px] text-foreground; }
+  .confirm-ticket-kicker { @apply font-mono text-[7px] font-bold tracking-[0.15em] text-primary; }
+  .confirm-ticket.sell .confirm-ticket-kicker { @apply text-danger; }
+  .confirm-metrics { @apply grid grid-cols-2 gap-x-3; }
+  .confirm-metrics > div { @apply min-w-0 border-b border-line py-2.5; }
+  .confirm-metrics dt { @apply mb-1 text-[8px] text-muted; }
+  .confirm-metrics dd { @apply m-0 truncate text-[10px] font-bold text-foreground; }
+  .confirm-disclosure { @apply mt-3 flex items-start gap-2 rounded-[9px] border border-warning/15 bg-warning/[0.045] px-2.5 py-2; }
+  .confirm-disclosure > svg { @apply mt-0.5 size-3.5 shrink-0 text-warning; }
+  .confirm-disclosure p { @apply m-0 text-[8px] leading-normal text-[#aaa386]; }
+  .confirm-disclosure strong { @apply mr-1.5 text-warning; }
+  .confirm-disclosure span { @apply text-muted; }
+  .confirm-access { @apply mt-3 rounded-[13px] border border-line bg-surface-raised p-3; }
+  .confirm-access-copy { @apply mb-2.5 flex items-center justify-between; }
+  .confirm-access-copy span { @apply font-mono text-[7px] font-bold tracking-[0.14em] text-primary; }
+  .confirm-access-copy h3 { @apply mt-1 mb-0 text-[13px]; }
+  .confirm-access-copy > svg { @apply size-5 text-primary; }
+  .confirm-access-field { @apply mb-2 block; }
+  .confirm-access-field > span { @apply mb-1.5 block text-[8px] font-bold text-muted; }
+  .confirm-access-field input { @apply h-11 w-full rounded-[9px] border border-line bg-base px-3 font-mono text-[11px] text-foreground outline-none placeholder:text-[#56605b] focus:border-primary/45; }
+  .confirm-primary { @apply flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-[9px] border-0 text-[11px] font-extrabold transition-[transform,opacity] duration-200; }
+  .confirm-primary.buy { @apply bg-paper text-[#04120b] shadow-[0_8px_24px_#02c0761f]; }
+  .confirm-primary.sell { @apply bg-danger text-[#180307] shadow-[0_8px_24px_#f8496017]; }
+  .confirm-primary:active { @apply scale-[0.985]; }
+  .confirm-primary:disabled { @apply cursor-not-allowed opacity-55; }
+  .confirm-primary svg { @apply size-4; }
+  .confirm-page > .confirm-primary { @apply mt-3; }
+  .confirm-text-link { @apply mx-auto mt-2.5 flex min-h-10 w-fit items-center justify-center px-4 text-[10px] font-bold text-muted underline decoration-line underline-offset-4 hover:text-foreground; }
+  .confirm-checking { @apply mt-3 flex min-h-11 items-center justify-center gap-2 rounded-[11px] border border-line bg-surface-raised font-mono text-[9px] text-muted; }
+  .confirm-checking i { @apply size-1.5 animate-pulse rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)]; }
+  .confirm-page .market-overview-warning { @apply mt-3 mb-0; }
+
+  .compact-result { @apply mx-auto min-h-[calc(100dvh-32px)] max-w-[430px] justify-start px-4 pt-[72px] pb-8; }
+  .compact-result .success-orb { @apply mb-3 size-14 shadow-[0_0_38px_#44e09233]; }
+  .compact-result .success-orb svg { @apply size-7; }
+  .compact-result .paper-badge { @apply mb-3; }
+  .compact-result h1 { @apply mb-1.5 text-[22px]; }
+  .compact-result > p { @apply m-0 max-w-[310px] text-[11px]; }
+  .receipt-ticket { @apply mt-5 w-full overflow-hidden rounded-[15px] border border-line bg-surface-raised text-left shadow-[inset_0_1px_0_#ffffff05]; }
+  .receipt-ticket-head { @apply flex items-center justify-between border-b border-line px-3.5 py-3; }
+  .receipt-ticket-head span { @apply font-mono text-[7px] font-bold tracking-[0.13em] text-muted; }
+  .receipt-ticket-head strong { @apply text-[11px]; }
+  .receipt-ticket .receipt { @apply m-0 w-full gap-0 rounded-none border-0 bg-transparent p-0; }
+  .receipt-ticket .receipt > div { @apply flex min-h-11 items-center justify-between border-b border-line px-3.5 last:border-b-0; }
+  .receipt-ticket .receipt dt { @apply text-[9px] text-muted; }
+  .receipt-ticket .receipt dd { @apply m-0 max-w-[62%] truncate text-[10px] font-bold text-foreground; }
+  .receipt-ticket .receipt dd.positive { @apply text-primary; }
+  .confirm-actions { @apply mt-4 w-full; }
+
   .orders-environment { @apply mb-3 flex items-center justify-between border-y border-line py-2.5 text-[8px] tracking-[0.04em] text-muted; }
   .orders-environment span { @apply flex items-center gap-1.5 font-bold text-primary; }
   .orders-environment span i { @apply size-1.5 rounded-full bg-primary shadow-[0_0_10px_#44e092]; }
@@ -414,18 +488,31 @@
   .allocation-bar i { @apply h-full; }
   .asset-list, .activity-list { @apply overflow-hidden rounded-card border border-line bg-surface; }
   .asset-list.compact { @apply mt-3; }
-  .ledger-separation-note { @apply mb-5 flex gap-3 rounded-xl border border-primary/20 bg-primary/[0.05] p-3; }
+  .ledger-separation-note { @apply mb-3 flex gap-2.5 rounded-xl border border-primary/15 bg-primary/[0.035] px-3 py-2.5; }
   .ledger-separation-note > svg { @apply size-5 shrink-0 text-primary; }
-  .ledger-separation-note strong { @apply block text-[11px] text-primary; }
-  .ledger-separation-note span { @apply mt-1 block text-[9px] leading-relaxed text-muted; }
-  .ledger-section { @apply rounded-[20px] border border-line bg-[#0e1214] p-3; }
-  .ledger-section.onchain { @apply border-[#334047]; background: linear-gradient(145deg, #10171a, #0c1012); }
-  .ledger-heading { @apply mb-3 flex items-start justify-between px-1; }
-  .ledger-heading h2 { @apply mt-1 mb-0 font-mono text-[12px] tracking-[0.03em]; }
-  .ledger-source { @apply rounded-full border px-2 py-1 font-mono text-[8px] font-bold tracking-[0.12em]; }
+  .ledger-separation-note strong { @apply block text-[12px] text-primary; }
+  .ledger-separation-note span { @apply mt-0.5 block text-[10px] leading-relaxed text-muted; }
+  .ledger-section { @apply rounded-[16px] border border-line bg-[#0e1214] p-3.5 shadow-[inset_0_1px_0_#ffffff05]; }
+  .ledger-section + .ledger-section { @apply mt-3; }
+  .ledger-section.onchain { @apply border-[#303a3f]; background: linear-gradient(145deg, #10171a, #0c1012); }
+  .ledger-heading { @apply mb-3 flex items-center justify-between; }
+  .ledger-heading h2 { @apply mt-1 mb-0 text-[17px] tracking-[-0.03em]; }
+  .ledger-heading-actions { @apply flex items-center gap-2.5; }
+  .ledger-heading-actions > a { @apply text-[11px] font-bold text-primary; }
+  .ledger-source { @apply rounded-full border px-2 py-1 font-mono text-[9px] font-bold tracking-[0.12em]; }
+  .ledger-source i { @apply mr-1 inline-block size-1.5 rounded-full bg-current; }
   .ledger-source.demo { @apply border-paper/30 bg-paper/[0.07] text-paper; }
   .ledger-source.wallet { @apply border-[#7194a4]/30 bg-[#7194a4]/[0.07] text-[#9bc0d0]; }
-  .ledger-divider { @apply my-3 flex items-center gap-2 font-mono text-[7px] tracking-[0.18em] text-[#58645f] before:h-px before:flex-1 before:bg-line after:h-px after:flex-1 after:bg-line; }
+  .ledger-balance-summary { @apply rounded-[13px] border border-[#2c3832] bg-primary/[0.035] px-3.5 py-3; }
+  .ledger-balance-summary .row > span { @apply text-[11px] text-muted; }
+  .ledger-balance-summary .icon-button { @apply -mr-2 size-8; }
+  .ledger-balance-summary h3 { @apply mt-1 mb-0 text-[25px] leading-tight; }
+  .ledger-balance-summary > .muted { @apply mt-1.5 block text-[10px]; }
+  .ledger-locked { @apply grid grid-cols-[30px_1fr_auto] items-center gap-2.5 rounded-[13px] border border-dashed border-primary/25 bg-primary/[0.035] px-3 py-3.5; }
+  .ledger-locked > svg { @apply size-5 text-primary; }
+  .ledger-locked strong { @apply block text-[11px]; }
+  .ledger-locked span { @apply mt-1 block text-[10px] text-muted; }
+  .ledger-locked a { @apply rounded-lg border border-primary/25 bg-primary/[0.06] px-2.5 py-2 text-[10px] font-bold text-primary; }
   .wallet-connect-card { @apply grid grid-cols-[38px_1fr_18px] items-center gap-3 rounded-xl border border-dashed border-[#48606a] bg-[#11191c] p-4 text-foreground; }
   .wallet-connect-card > svg:first-child { @apply size-6 text-[#9bc0d0]; }
   .wallet-connect-card > svg:last-child { @apply text-muted; }
@@ -433,14 +520,22 @@
   .wallet-connect-card span { @apply mt-1 block text-[9px] text-muted; }
   .wallet-chain-state { @apply flex min-h-20 items-center justify-center gap-2 rounded-xl border border-line bg-surface text-[10px] text-muted; }
   .wallet-chain-state.error { @apply border-danger/20 bg-danger/[0.04] text-danger; }
+  .wallet-chain-state.unsupported { @apply grid grid-cols-[20px_1fr_auto] justify-start px-3.5 text-warning; }
+  .wallet-chain-state.unsupported svg { @apply size-5; }
+  .wallet-chain-state.unsupported strong { @apply block text-[11px]; }
+  .wallet-chain-state.unsupported span { @apply mt-1 block text-[10px] text-muted; }
+  .wallet-chain-state.unsupported a { @apply rounded-lg border border-warning/25 bg-warning/[0.05] px-2.5 py-2 text-[10px] font-bold text-warning; }
   .wallet-chain-meta { @apply flex items-end justify-between rounded-xl border border-line bg-surface px-3 py-2.5; }
   .wallet-chain-meta span { @apply block text-[10px] font-bold; }
   .wallet-chain-meta strong { @apply mt-1 block text-[9px] text-muted; }
   .wallet-chain-meta small { @apply text-[8px] text-[#759183]; }
+  .ledger-section .asset-list.compact { @apply mt-2 rounded-[11px]; }
+  .ledger-section .asset-row { @apply min-h-[54px] px-3 py-2.5; }
+  .ledger-section .empty { @apply min-h-20 justify-center p-5 text-[11px]; }
   .asset-row { @apply flex items-center justify-between border-b border-line p-3.5 last:border-0; }
   .asset-row > div:last-child { @apply text-right; }
   .asset-row strong { @apply text-xs; }
-  .asset-row small { @apply mt-1 text-[9px]; }
+  .asset-row small { @apply mt-1 text-[10px]; }
   .asset-balance { @apply py-6 text-center; }
   .asset-balance .asset-mark { @apply mx-auto; }
   .asset-balance h2 { @apply mt-3.5 mb-[3px] text-[29px]; }
@@ -516,6 +611,40 @@
   .toggle.on i { @apply translate-x-4 bg-primary; }
   .select-button { @apply flex items-center gap-[3px] border-0 bg-transparent text-[10px] text-primary; }
   .signout-button { @apply mt-5 flex items-center justify-center gap-2 rounded-[11px] border border-danger/20 p-[13px] text-[11px] text-danger; }
+
+  .wallet-sheet-layer { @apply fixed inset-0 z-[70] flex items-end justify-center; }
+  .wallet-sheet-backdrop { @apply absolute inset-0 cursor-default border-0 bg-black/65 backdrop-blur-[2px]; }
+  .wallet-account-sheet { @apply relative z-[1] w-full max-w-[430px] rounded-t-[22px] border border-b-0 border-[#30383d] bg-[#121619] px-4 pt-2 pb-[max(18px,env(safe-area-inset-bottom))] shadow-[0_-24px_80px_#000b]; }
+  .wallet-sheet-handle { @apply mx-auto mb-2 h-1 w-10 rounded-full bg-[#46504b]; }
+  .wallet-sheet-header { @apply flex items-center justify-between; }
+  .wallet-sheet-header h2 { @apply mt-1 mb-0 text-[20px]; }
+  .wallet-account-summary { @apply mt-3 grid grid-cols-[42px_1fr_auto] items-center gap-2.5 rounded-[13px] border border-line bg-surface-raised p-3; }
+  .wallet-sheet-avatar { @apply grid size-[42px] place-items-center rounded-[12px] border border-primary/25 bg-primary/[0.07] text-primary; }
+  .wallet-sheet-avatar svg { @apply size-[22px]; }
+  .wallet-account-summary > div strong { @apply block text-[12px]; }
+  .wallet-account-summary > div span { @apply mt-1 block text-[10px] text-muted; }
+  .wallet-auth-state { @apply inline-flex items-center gap-1 rounded-full border px-2 py-1.5 text-[10px] font-bold; }
+  .wallet-auth-state svg { @apply size-3; }
+  .wallet-auth-state.verified { @apply border-primary/25 bg-primary/[0.06] text-primary; }
+  .wallet-auth-state.pending { @apply border-warning/25 bg-warning/[0.06] text-warning; }
+  .wallet-auth-state.warning { @apply border-danger/25 bg-danger/[0.06] text-danger; }
+  .wallet-sheet-warning { @apply mt-2 flex items-center gap-2 rounded-lg border border-danger/20 bg-danger/[0.05] px-3 py-2 text-[11px] text-danger; }
+  .wallet-sheet-warning svg { @apply size-4 shrink-0; }
+  .wallet-sheet-primary { @apply mt-2.5 flex min-h-11 w-full items-center justify-center gap-2 rounded-[11px] border-0 bg-primary text-[12px] font-extrabold text-[#04110a]; }
+  .wallet-sheet-primary svg { @apply size-[17px]; }
+  .wallet-sheet-primary:disabled { @apply opacity-60; }
+  .wallet-sheet-actions { @apply mt-3 overflow-hidden rounded-[13px] border border-line bg-surface; }
+  .wallet-sheet-actions > button, .wallet-sheet-actions > a { @apply grid min-h-[52px] w-full grid-cols-[22px_1fr_16px] items-center gap-2.5 border-0 border-b border-line bg-transparent px-3 text-left last:border-b-0; }
+  .wallet-sheet-actions > button > svg:first-child, .wallet-sheet-actions > a > svg:first-child { @apply size-[18px] text-primary; }
+  .wallet-sheet-actions > button > svg:last-child, .wallet-sheet-actions > a > svg:last-child { @apply size-3.5 text-muted; }
+  .wallet-sheet-actions b { @apply block text-[11px]; }
+  .wallet-sheet-actions small { @apply mt-0.5 block text-[10px] text-muted; }
+  .wallet-sheet-danger { @apply mt-3 grid grid-cols-2 gap-2; }
+  .wallet-sheet-danger button { @apply flex min-h-10 items-center justify-center gap-1.5 rounded-[10px] border border-line bg-transparent text-[11px] font-bold text-muted; }
+  .wallet-sheet-danger button:last-child { @apply border-danger/20 text-danger; }
+  .wallet-sheet-danger button:disabled { @apply opacity-35; }
+  .wallet-sheet-danger svg { @apply size-4; }
+  .wallet-account-sheet > p { @apply mt-3 mb-0 text-center text-[10px] leading-relaxed text-muted; }
 }
 
 @media (max-width: 360px) {

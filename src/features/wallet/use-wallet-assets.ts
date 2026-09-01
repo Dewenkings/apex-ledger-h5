@@ -16,7 +16,7 @@ export type WalletAsset = {
   updatedAt: number;
 };
 
-export type WalletAssetsState = "loading" | "ready" | "stale" | "error";
+export type WalletAssetsState = "loading" | "ready" | "stale" | "error" | "unsupported";
 
 export function useWalletAssets(address: Address | undefined, chainId: number | undefined): {
   state: WalletAssetsState;
@@ -41,7 +41,8 @@ export function useWalletAssets(address: Address | undefined, chainId: number | 
     query: { enabled: Boolean(address && supported && tokens.length) },
   });
 
-  if (!address || !supported) return { state: "ready", assets: [] };
+  if (!address) return { state: "ready", assets: [] };
+  if (!supported) return { state: "unsupported", assets: [] };
   const loading = nativeBalance.isLoading || (tokens.length > 0 && tokenBalances.isLoading);
   if (loading && !nativeBalance.data && !tokenBalances.data) return { state: "loading", assets: [] };
 

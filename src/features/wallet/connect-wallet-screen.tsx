@@ -3,6 +3,7 @@
 import { useAppKit } from "@reown/appkit/react";
 import { ArrowRight, CheckCircle, ShieldCheck, SpinnerGap, Wallet, X } from "@phosphor-icons/react";
 import Link from "next/link";
+import { useState } from "react";
 import { useDisconnect } from "wagmi";
 
 import { AppShell } from "@/components/layout/app-shell";
@@ -14,11 +15,15 @@ export function ConnectWalletScreen() {
   const { open } = useAppKit();
   const { disconnect } = useDisconnect();
   const session = useSiweSession();
+  const [disconnecting, setDisconnecting] = useState(false);
   const connected = session.status !== "disconnected";
 
-  function disconnectSafely() {
-    void session.logout();
-    disconnect();
+  async function disconnectSafely() {
+    if (disconnecting) return;
+    setDisconnecting(true);
+    const loggedOut = await session.logout();
+    if (loggedOut) disconnect();
+    setDisconnecting(false);
   }
 
   return (
@@ -80,7 +85,7 @@ export function ConnectWalletScreen() {
                 </div>
               )}
 
-              <button className="wallet-disconnect" onClick={disconnectSafely}>断开钱包</button>
+              <button className="wallet-disconnect" disabled={disconnecting} onClick={() => void disconnectSafely()}>{disconnecting ? "正在断开…" : "断开钱包"}</button>
             </>
           )}
 

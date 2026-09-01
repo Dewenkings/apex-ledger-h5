@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/portfolio" }));
+vi.mock("@/components/wallet/wallet-account-control", () => ({ WalletAccountControl: () => <button type="button">连接钱包</button> }));
 vi.mock("wagmi", () => ({ useAccount: () => mocks.wagmi }));
 vi.mock("@/components/trade/use-demo-account", () => ({ useDemoAccount: () => mocks.account }));
 vi.mock("@/features/wallet/use-wallet-assets", () => ({
@@ -30,13 +31,15 @@ describe("PortfolioScreen", () => {
     mocks.account.state = "ready";
     mocks.wallet.state = "ready";
     mocks.wagmi.isConnected = true;
+    mocks.wagmi.chainId = 1;
   });
 
   it("shows the Demo and on-chain ledgers as separate sources", () => {
     render(<PortfolioScreen />);
-    expect(screen.getByText("OKX DEMO · VIRTUAL FUNDS")).toBeInTheDocument();
-    expect(screen.getByText("ON-CHAIN · READ ONLY")).toBeInTheDocument();
-    expect(screen.getByText("两类资产不会合并计算")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "模拟资产" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "链上钱包" })).toBeInTheDocument();
+    expect(screen.getByText("模拟账户与链上钱包分别计算")).toBeInTheDocument();
+    expect(screen.getByText("OKX Demo")).toBeInTheDocument();
     expect(screen.getByText("50,000 USDT")).toBeInTheDocument();
     expect(screen.getByText("2.5 ETH")).toBeInTheDocument();
     expect(screen.queryByText("52,500 USDT")).not.toBeInTheDocument();
@@ -54,5 +57,14 @@ describe("PortfolioScreen", () => {
     render(<PortfolioScreen />);
     expect(screen.getByText("50,000 USDT")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "连接钱包读取链上余额" })).toHaveAttribute("href", "/connect-wallet");
+  });
+
+  it("offers network switching instead of claiming unsupported balances are synced", () => {
+    mocks.wallet.state = "unsupported";
+    mocks.wagmi.chainId = 137;
+    render(<PortfolioScreen />);
+    expect(screen.getByText("当前网络暂不支持")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "切换网络" })).toHaveAttribute("href", "/settings");
+    expect(screen.queryByText("RPC 已同步")).not.toBeInTheDocument();
   });
 });

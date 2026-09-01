@@ -7,6 +7,7 @@ import { MarketScreen } from "./market-screen";
 vi.mock("next/navigation", () => ({
   usePathname: () => "/markets",
 }));
+vi.mock("@/components/wallet/wallet-account-control", () => ({ WalletAccountControl: () => <button type="button">连接钱包</button> }));
 
 function overviewItem(symbol: MarketSymbol) {
   const index = marketSymbols.indexOf(symbol);

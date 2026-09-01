@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   open: vi.fn(),
   disconnect: vi.fn(),
-  logout: vi.fn(),
+  logout: vi.fn().mockResolvedValue(true),
   clipboard: vi.fn(),
   session: {
     status: "authenticated",
@@ -27,6 +27,7 @@ import { SettingsScreen } from "./settings-screen";
 describe("SettingsScreen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.logout.mockResolvedValue(true);
     Object.assign(mocks.session, { status: "authenticated", chainId: 1, unsupportedNetwork: false });
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: mocks.clipboard.mockResolvedValue(undefined) } });
   });
@@ -40,14 +41,16 @@ describe("SettingsScreen", () => {
     expect(screen.getByText("已授权")).toBeInTheDocument();
   });
 
-  it("keeps SIWE logout separate from connector disconnect", () => {
+  it("keeps SIWE-only logout separate while full disconnect also clears the session", async () => {
     render(<SettingsScreen />);
     fireEvent.click(screen.getByRole("button", { name: "退出钱包登录" }));
     expect(mocks.logout).toHaveBeenCalledTimes(1);
     expect(mocks.disconnect).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByRole("button", { name: "断开钱包连接" })).toBeEnabled());
 
     fireEvent.click(screen.getByRole("button", { name: "断开钱包连接" }));
-    expect(mocks.disconnect).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(mocks.disconnect).toHaveBeenCalledTimes(1));
+    expect(mocks.logout).toHaveBeenCalledTimes(2);
   });
 
   it("copies the full address only after an explicit action", async () => {
@@ -62,5 +65,20 @@ describe("SettingsScreen", () => {
     render(<SettingsScreen />);
     fireEvent.click(screen.getByRole("button", { name: "切换钱包网络" }));
     expect(mocks.open).toHaveBeenCalledWith({ view: "Networks" });
+  });
+
+  it("prevents duplicate disconnect requests", async () => {
+    let finishLogout: (value: boolean) => void = () => undefined;
+    mocks.logout.mockReturnValue(new Promise<boolean>((resolve) => { finishLogout = resolve; }));
+    render(<SettingsScreen />);
+    const button = screen.getByRole("button", { name: "断开钱包连接" });
+
+    fireEvent.click(button);
+    fireEvent.click(button);
+
+    expect(mocks.logout).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "正在断开钱包" })).toBeDisabled();
+    finishLogout(true);
+    await waitFor(() => expect(mocks.disconnect).toHaveBeenCalledTimes(1));
   });
 });

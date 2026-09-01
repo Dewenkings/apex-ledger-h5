@@ -89,13 +89,15 @@ export function useSiweSession() {
     }
   }, [account.address, account.chainId, account.isConnected, queryClient, signMessageAsync]);
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(async (): Promise<boolean> => {
     setError(null);
     try {
       const nextSession = await logoutSiwe();
       queryClient.setQueryData(SESSION_QUERY_KEY, nextSession);
+      return true;
     } catch (logoutError) {
       setError(toFriendlyError(logoutError));
+      return false;
     }
   }, [queryClient]);
 

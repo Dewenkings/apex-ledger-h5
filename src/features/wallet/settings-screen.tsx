@@ -16,6 +16,7 @@ export function SettingsScreen() {
   const { disconnect } = useDisconnect();
   const session = useSiweSession();
   const [copied, setCopied] = useState(false);
+  const [walletOperation, setWalletOperation] = useState<"logout" | "disconnect" | null>(null);
   const demoAuthorization = useQuery({
     queryKey: ["demo", "authorization"],
     queryFn: getDemoAuthorization,
@@ -33,6 +34,21 @@ export function SettingsScreen() {
     } catch {
       setCopied(false);
     }
+  }
+
+  async function disconnectSafely() {
+    if (walletOperation) return;
+    setWalletOperation("disconnect");
+    const loggedOut = await session.logout();
+    if (loggedOut) disconnect();
+    setWalletOperation(null);
+  }
+
+  async function logoutOnly() {
+    if (walletOperation) return;
+    setWalletOperation("logout");
+    await session.logout();
+    setWalletOperation(null);
   }
 
   return (
@@ -54,8 +70,8 @@ export function SettingsScreen() {
 
       <section className="identity-boundary"><WarningCircle /><div><strong>操作边界</strong><span>退出 SIWE 或断开钱包都不会删除 Demo 订单；Demo 门禁也不会获得钱包权限。</span></div></section>
       <div className="settings-buttons">
-        <button type="button" disabled={!authenticated} onClick={() => void session.logout()}><SignOut />退出钱包登录</button>
-        <button type="button" disabled={!connected} onClick={() => disconnect()}><LinkSimple />断开钱包连接</button>
+        <button type="button" disabled={!authenticated || walletOperation !== null} onClick={() => void logoutOnly()}><SignOut />{walletOperation === "logout" ? "正在退出登录" : "退出钱包登录"}</button>
+        <button type="button" disabled={!connected || walletOperation !== null} onClick={() => void disconnectSafely()}><LinkSimple />{walletOperation === "disconnect" ? "正在断开钱包" : "断开钱包连接"}</button>
       </div>
     </AppShell>
   );

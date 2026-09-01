@@ -8,6 +8,7 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/trade/btc-usdt",
   useSearchParams: () => new URLSearchParams(),
 }));
+vi.mock("@/components/wallet/wallet-account-control", () => ({ WalletAccountControl: () => <button type="button">连接钱包</button> }));
 
 const ticker = {
   instrument: "BTC-USDT",
