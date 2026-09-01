@@ -71,7 +71,6 @@ export function TradeMarketPanel({ pair, onPriceChange }: { pair: TradingPairCon
         </div>
       </div>
       <CandlestickChart instrument={pair.instrument} candles={market.candles} />
-      <div className="chart-data-note"><span>蜡烛图</span><b>公开实时行情</b></div>
       {market.hasError && <div className="market-error">
         <WarningCircle />
         <span>实时行情暂时不可用，当前展示演示回退数据。</span>

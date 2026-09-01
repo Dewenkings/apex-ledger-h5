@@ -46,6 +46,8 @@ describe("TradeMarketPanel", () => {
     expect(screen.queryByText(/OKX|KRAKEN/)).not.toBeInTheDocument();
     expect(screen.queryByText("标记价格")).not.toBeInTheDocument();
     expect(screen.queryByText("持仓量")).not.toBeInTheDocument();
+    expect(screen.queryByText("蜡烛图")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("BTC-USDT 蜡烛图")).toBeInTheDocument();
   });
 
   it("requests and selects the candle period the user taps", async () => {

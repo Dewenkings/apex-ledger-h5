@@ -27,7 +27,16 @@ const candles = [
 afterEach(() => vi.unstubAllGlobals());
 
 describe("TradeScreen live market integration", () => {
-  it("opens a side-specific paper order sheet and returns focus when dismissed", async () => {
+  it("prevents confirmation until the live price is ready", () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => undefined)));
+
+    render(<TradeScreen pair={tradingPairs[0]} />);
+
+    expect(screen.getByText("确认买入 BTC")).toHaveAttribute("aria-disabled", "true");
+    expect(screen.queryByRole("link", { name: "确认买入 BTC" })).not.toBeInTheDocument();
+  });
+
+  it("keeps a side-specific paper order ticket inline with the live order book", async () => {
     vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => Promise.resolve(Response.json({
       source: "okx",
       data: String(input).includes("/ticker") ? ticker : candles,
@@ -35,23 +44,22 @@ describe("TradeScreen live market integration", () => {
 
     render(<TradeScreen pair={tradingPairs[1]} />);
 
-    const buyTrigger = await screen.findByRole("button", { name: "买入 ETH" });
+    const ticket = await screen.findByRole("region", { name: "ETH 模拟交易" });
+    expect(ticket).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    fireEvent.click(buyTrigger);
-
-    expect(screen.getByRole("dialog", { name: "买入 ETH" })).toBeInTheDocument();
-    expect(screen.getByDisplayValue("70000.00")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "买入" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "卖出" })).toHaveAttribute("aria-pressed", "false");
+    expect(await screen.findByDisplayValue("70000.00")).toBeInTheDocument();
+    expect(screen.getByText("预计费用")).toBeInTheDocument();
+    expect(screen.getByText("$1.40")).toBeInTheDocument();
     const buyUrl = new URL(screen.getByRole("link", { name: "确认买入 ETH" }).getAttribute("href")!, "http://app.local");
     expect(buyUrl.pathname).toBe("/trade/eth-usdt/confirm");
     expect(buyUrl.searchParams.get("side")).toBe("buy");
     expect(screen.getByRole("button", { name: "限价" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "市价" })).toHaveAttribute("aria-pressed", "false");
 
-    fireEvent.keyDown(document, { key: "Escape" });
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(buyTrigger).toHaveFocus();
-
-    fireEvent.click(screen.getByRole("button", { name: "卖出 ETH" }));
+    fireEvent.click(screen.getByRole("button", { name: "卖出" }));
+    expect(screen.getByRole("button", { name: "卖出" })).toHaveAttribute("aria-pressed", "true");
     const sellUrl = new URL(screen.getByRole("link", { name: "确认卖出 ETH" }).getAttribute("href")!, "http://app.local");
     expect(sellUrl.pathname).toBe("/trade/eth-usdt/confirm");
     expect(sellUrl.searchParams.get("side")).toBe("sell");
@@ -77,9 +85,9 @@ describe("TradeScreen live market integration", () => {
     expect(screen.queryByRole("button", { name: "更多行情选项" })).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "行情" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tabpanel", { name: "行情" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "买入 ETH" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "ETH 模拟交易" })).toBeInTheDocument();
     expect(screen.getAllByText("PAPER LIVE").length).toBeGreaterThan(0);
-    expect(screen.queryByText("模拟撮合环境，不会请求钱包交易签名或扣除真实资产")).not.toBeInTheDocument();
+    expect(screen.getByText(/模拟费率 0\.10%/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "1D" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryByRole("button", { name: "EMA" })).not.toBeInTheDocument();
 
