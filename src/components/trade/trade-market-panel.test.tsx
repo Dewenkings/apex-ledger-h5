@@ -38,7 +38,14 @@ describe("TradeMarketPanel", () => {
     expect(screen.getByRole("status", { name: "正在加载实时行情" })).toBeInTheDocument();
     expect(await screen.findByText("68,342.10")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "1D" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText("OKX LIVE")).toBeInTheDocument();
+    expect(screen.getByText("实时行情")).toBeInTheDocument();
+    expect(screen.getByText("24H 最高")).toBeInTheDocument();
+    expect(screen.getByText("24H 最低")).toBeInTheDocument();
+    expect(screen.getByText("24H 成交量 (BTC)")).toBeInTheDocument();
+    expect(screen.getByText("24H 成交额 (USDT)")).toBeInTheDocument();
+    expect(screen.queryByText(/OKX|KRAKEN/)).not.toBeInTheDocument();
+    expect(screen.queryByText("标记价格")).not.toBeInTheDocument();
+    expect(screen.queryByText("持仓量")).not.toBeInTheDocument();
   });
 
   it("requests and selects the candle period the user taps", async () => {
@@ -63,14 +70,14 @@ describe("TradeMarketPanel", () => {
     vi.stubGlobal("fetch", fetcher);
     render(<TradeMarketPanel pair={tradingPairs[0]} />);
 
-    expect(await screen.findByText("DEMO DATA")).toBeInTheDocument();
+    expect(await screen.findByText("演示数据")).toBeInTheDocument();
     fetcher.mockImplementation(okMarketFetch);
     fireEvent.click(screen.getByRole("button", { name: "重试实时行情" }));
 
-    expect(await screen.findByText("OKX LIVE")).toBeInTheDocument();
+    expect(await screen.findByText("实时行情")).toBeInTheDocument();
   });
 
-  it("identifies Kraken when the backup real provider serves the market", async () => {
+  it("keeps the upstream provider neutral when backup real data serves the market", async () => {
     vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => Promise.resolve(Response.json({
       source: "kraken",
       data: String(input).includes("/ticker") ? ticker : candles,
@@ -78,7 +85,8 @@ describe("TradeMarketPanel", () => {
 
     render(<TradeMarketPanel pair={tradingPairs[0]} />);
 
-    expect(await screen.findByText("KRAKEN LIVE")).toBeInTheDocument();
+    expect(await screen.findByText("实时行情")).toBeInTheDocument();
+    expect(screen.queryByText(/KRAKEN|OKX/)).not.toBeInTheDocument();
   });
 
   it("queries and labels ETH when the route selects ETH-USDT", async () => {
@@ -91,7 +99,7 @@ describe("TradeMarketPanel", () => {
 
     render(<TradeMarketPanel pair={tradingPairs[1]} />);
 
-    expect(await screen.findByText("ETH/USDT")).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "ETH/USDT 实时行情" })).toBeInTheDocument();
     expect(screen.getByLabelText("ETH-USDT 蜡烛图")).toBeInTheDocument();
     expect(fetcher).toHaveBeenCalledWith(
       "/api/market/ticker?instrument=ETH-USDT",

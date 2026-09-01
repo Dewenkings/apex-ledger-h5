@@ -8,15 +8,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { AssetMark, Change, FavoriteMarketCard, PaperBadge } from "@/components/ui";
 import { filterMarkets } from "@/lib/trading";
 import { getPairBySymbol } from "@/lib/trading/pairs";
-import { useMarketOverview, type OverviewDisplaySource, type OverviewMarket } from "./use-market-overview";
-
-const sourceLabels: Record<OverviewDisplaySource, string> = {
-  okx: "OKX LIVE",
-  kraken: "KRAKEN LIVE",
-  mixed: "MIXED LIVE",
-  "mixed-data": "MIXED DATA",
-  demo: "DEMO DATA",
-};
+import { useMarketOverview, type OverviewMarket } from "./use-market-overview";
 
 const priceFormatter = new Intl.NumberFormat("en-US", { maximumFractionDigits: 4 });
 const updateFormatter = new Intl.DateTimeFormat("zh-CN", {
@@ -30,18 +22,18 @@ function MarketDestination({ market, children }: { market: OverviewMarket; child
   return pair ? <Link href={`/trade/${pair.pairSlug}`}>{children}</Link> : <>{children}</>;
 }
 
-function sourceShort(source: OverviewMarket["source"]): string {
-  return source === "demo" ? "DEMO" : source.toUpperCase();
-}
-
 export function MarketScreen() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
+  const [mode, setMode] = useState<"favorites" | "spot" | "gainers">("favorites");
   const overview = useMarketOverview();
   const visible = useMemo(
-    () => filterMarkets(overview.markets, query)
-      .filter((market) => category === "All" || market.category === category),
-    [overview.markets, query, category],
+    () => {
+      const filtered = filterMarkets(overview.markets, query)
+        .filter((market) => category === "All" || market.category === category);
+      return mode === "gainers" ? [...filtered].sort((a, b) => b.change - a.change) : filtered;
+    },
+    [overview.markets, query, category, mode],
   );
 
   return <AppShell>
@@ -53,10 +45,14 @@ export function MarketScreen() {
       <div className="market-header-actions"><PaperBadge /><button className="icon-button" aria-label="行情提醒"><Bell /></button></div>
     </header>
 
+    <nav className="market-mode-tabs" aria-label="行情分类" role="tablist">
+      {([['favorites', '自选'], ['spot', '现货'], ['gainers', '涨幅榜']] as const).map(([key, label]) => <button type="button" role="tab" aria-selected={mode === key} className={mode === key ? "active" : ""} onClick={() => setMode(key)} key={key}>{label}</button>)}
+    </nav>
+
     {overview.isInitialLoading ? <MarketOverviewLoading /> : <>
       <div className="overview-meta">
-        <span className={`market-source ${overview.source === "demo" || overview.source === "mixed-data" ? "fallback" : overview.source !== "okx" ? "backup" : ""}`}>
-          {sourceLabels[overview.source]}
+        <span className={`market-source ${overview.source === "demo" || overview.source === "mixed-data" ? "fallback" : ""}`}>
+          {overview.source === "demo" || overview.source === "mixed-data" ? "演示数据" : "实时行情"}
         </span>
         <span className="overview-updated"><Clock />{overview.updatedAt ? `更新于 ${updateFormatter.format(new Date(overview.updatedAt))}` : "演示快照"}</span>
         {overview.isRefreshing && <span className="overview-refreshing">更新中</span>}
@@ -73,9 +69,9 @@ export function MarketScreen() {
       <label className="search"><MagnifyingGlass /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索资产或交易对" /></label>
 
       <section>
-        <div className="section-title"><h3>自选市场</h3><span className="muted">24H · USDT</span></div>
-        <div className="favorite-grid">{overview.markets.slice(0, 3).map((market) => <MarketDestination market={market} key={market.symbol}>
-          <FavoriteMarketCard market={market} sourceLabel={sourceShort(market.source)} sourceDemo={market.source === "demo"} />
+        <div className="section-title"><h3>市场动向</h3><span className="muted">24H · USDT</span></div>
+        <div className="favorite-grid" role="list" aria-label="自选行情">{overview.markets.slice(0, 3).map((market) => <MarketDestination market={market} key={market.symbol}>
+          <FavoriteMarketCard market={market} />
         </MarketDestination>)}</div>
       </section>
 
@@ -86,7 +82,7 @@ export function MarketScreen() {
           <div className="table-head"><span>资产</span><span>价格</span><span>24H 涨跌</span></div>
           {visible.map((market) => <MarketDestination market={market} key={market.symbol}>
             <div className="market-row" data-testid={`market-row-${market.symbol}`}>
-              <div className="row gap-12"><AssetMark market={market} /><div><div className="market-symbol-line"><strong>{market.symbol}</strong><small className={`row-source ${market.source === "demo" ? "demo" : ""}`}>{sourceShort(market.source)}</small></div><span className="muted block">{market.name} · USDT</span></div></div>
+              <div className="row gap-12"><AssetMark market={market} /><div><div className="market-symbol-line"><strong>{market.symbol}</strong></div><span className="muted block">{market.name} · USDT</span></div></div>
               <strong className="market-price mono">${priceFormatter.format(market.price)}</strong>
               <div className="market-change"><Change value={market.change} /></div>
             </div>

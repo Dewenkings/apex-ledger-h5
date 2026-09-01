@@ -12,6 +12,13 @@ import {
 
 import type { MarketCandle } from "@/lib/market-data/types";
 
+export function resolveChartSize(width: number, height: number) {
+  return {
+    width: Math.max(Math.round(width), 1),
+    height: Math.max(Math.round(height), 1),
+  };
+}
+
 export function CandlestickChart({ instrument, candles }: { instrument: string; candles: MarketCandle[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -20,13 +27,13 @@ export function CandlestickChart({ instrument, candles }: { instrument: string; 
     if (!container || typeof ResizeObserver === "undefined") return;
 
     const chart = createChart(container, {
-      width: Math.max(container.clientWidth, 1),
-      height: Math.max(container.clientHeight, 320),
+      ...resolveChartSize(container.clientWidth, container.clientHeight),
       layout: {
-        background: { type: ColorType.Solid, color: "transparent" },
+        background: { type: ColorType.Solid, color: "#0b0e11" },
         textColor: "#8f9c95",
         fontFamily: '"JetBrains Mono", "SFMono-Regular", Consolas, monospace',
         fontSize: 10,
+        attributionLogo: false,
       },
       grid: {
         vertLines: { color: "#20282a" },
@@ -58,10 +65,7 @@ export function CandlestickChart({ instrument, candles }: { instrument: string; 
     chart.timeScale().fitContent();
 
     const resizeObserver = new ResizeObserver(([entry]) => {
-      chart.applyOptions({
-        width: Math.max(Math.round(entry.contentRect.width), 1),
-        height: Math.max(Math.round(entry.contentRect.height), 320),
-      });
+      chart.applyOptions(resolveChartSize(entry.contentRect.width, entry.contentRect.height));
     });
     resizeObserver.observe(container);
 

@@ -18,13 +18,6 @@ function compactVolume(value: number, symbol: string): string {
   return `${new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 2 }).format(value)} ${symbol}`;
 }
 
-const sourceLabels = {
-  okx: "OKX LIVE",
-  kraken: "KRAKEN LIVE",
-  mixed: "MIXED LIVE",
-  demo: "DEMO DATA",
-} as const;
-
 export function TradeMarketPanel({ pair, onPriceChange }: { pair: TradingPairConfig; onPriceChange?: (price: number) => void }) {
   const market = useTradeMarket(pair);
   const ticker = market.ticker;
@@ -43,23 +36,23 @@ export function TradeMarketPanel({ pair, onPriceChange }: { pair: TradingPairCon
     </div>;
   }
 
+  const lastPrice = ticker?.last ?? 0;
+  const volume = ticker?.volume24h ?? 0;
+  const turnover = lastPrice * volume;
+
   return <>
-    <section className="quote-card">
-      <div>
-        <div className="row gap-10">
-          <span className="muted">{pair.baseSymbol}/{pair.quoteSymbol}</span>
-          <span className={`market-source ${market.isFallback ? "fallback" : market.source !== "okx" ? "backup" : ""}`}>
-            {sourceLabels[market.source]}
-          </span>
-        </div>
-        <div className="quote-price mono">{priceFormatter.format(ticker?.last ?? 0)}</div>
+    <section className="trade-quote-summary" aria-label={`${pair.baseSymbol}/${pair.quoteSymbol} 实时行情`}>
+      <div className="trade-primary-quote">
+        <div className="trade-quote-label"><span className={`live-dot ${market.isFallback ? "fallback" : ""}`} />{market.isFallback ? "演示数据" : "实时行情"}</div>
+        <div className="trade-live-price mono">{priceFormatter.format(lastPrice)}</div>
         <Change value={change} />
       </div>
-      <div className="quote-stats">
-        <span><i>24h High</i><b className="mono">{priceFormatter.format(ticker?.high24h ?? 0)}</b></span>
-        <span><i>24h Low</i><b className="mono">{priceFormatter.format(ticker?.low24h ?? 0)}</b></span>
-        <span><i>Volume</i><b className="mono">{compactVolume(ticker?.volume24h ?? 0, pair.baseSymbol)}</b></span>
-      </div>
+      <dl className="trade-quote-metrics">
+        <div><dt>24H 最高</dt><dd className="mono">{priceFormatter.format(ticker?.high24h ?? 0)}</dd></div>
+        <div><dt>24H 最低</dt><dd className="mono">{priceFormatter.format(ticker?.low24h ?? 0)}</dd></div>
+        <div><dt>24H 成交量 ({pair.baseSymbol})</dt><dd className="mono">{compactVolume(volume, "").trim()}</dd></div>
+        <div><dt>24H 成交额 ({pair.quoteSymbol})</dt><dd className="mono">{compactVolume(turnover, "").trim()}</dd></div>
+      </dl>
     </section>
     <section className="chart-card live-chart-card">
       <div className="row between chart-toolbar">
@@ -78,6 +71,9 @@ export function TradeMarketPanel({ pair, onPriceChange }: { pair: TradingPairCon
         </div>
       </div>
       <CandlestickChart instrument={pair.instrument} candles={market.candles} />
+      <div className="indicator-tabs" aria-label="图表指标">
+        {(["MA", "EMA", "BOLL", "VOL"] as const).map((indicator) => <button type="button" aria-pressed={indicator === "MA"} className={indicator === "MA" ? "active" : ""} key={indicator}>{indicator}</button>)}
+      </div>
       {market.hasError && <div className="market-error">
         <WarningCircle />
         <span>实时行情暂时不可用，当前展示演示回退数据。</span>

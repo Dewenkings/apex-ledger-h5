@@ -34,21 +34,26 @@ describe("MarketScreen", () => {
     vi.stubGlobal("fetch", vi.fn(async () => liveResponse()));
     render(<MarketScreen />);
 
-    await screen.findByText("OKX LIVE");
+    await screen.findByText("实时行情");
 
     expect(screen.getByRole("heading", { level: 1, name: "行情概览" })).toBeInTheDocument();
     expect(screen.queryByText("全球加密市场")).not.toBeInTheDocument();
     expect(screen.queryByText("发现你的下一个机会")).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "自选" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "现货" })).toHaveAttribute("aria-selected", "false");
+    expect(screen.getByRole("tab", { name: "涨幅榜" })).toHaveAttribute("aria-selected", "false");
     expect(screen.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Layer 1" })).toHaveAttribute("aria-pressed", "false");
   });
 
-  it("renders eight source-labelled live assets and links BTC, ETH and SOL trading routes", async () => {
+  it("renders a compact mover rail and eight provider-neutral assets with supported trading routes", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => liveResponse()));
     render(<MarketScreen />);
 
     expect(screen.getByRole("status", { name: "正在加载市场行情" })).toBeInTheDocument();
-    expect(await screen.findByText("OKX LIVE")).toBeInTheDocument();
+    expect(await screen.findByText("实时行情")).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "自选行情" }).children).toHaveLength(3);
+    expect(screen.queryByText(/OKX|KRAKEN/)).not.toBeInTheDocument();
     expect(screen.getAllByText("POL").length).toBeGreaterThan(0);
     expect(screen.queryByText("MATIC")).not.toBeInTheDocument();
     expect(screen.getByTestId("market-row-BTC").closest("a")).toHaveAttribute("href", "/trade/btc-usdt");
@@ -60,7 +65,7 @@ describe("MarketScreen", () => {
   it("filters live rows by query and category without changing favourites", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => liveResponse()));
     render(<MarketScreen />);
-    await screen.findByText("OKX LIVE");
+    await screen.findByText("实时行情");
 
     fireEvent.change(screen.getByPlaceholderText("搜索资产或交易对"), { target: { value: "polygon" } });
     expect(screen.getByTestId("market-row-POL")).toBeInTheDocument();
@@ -77,11 +82,11 @@ describe("MarketScreen", () => {
     vi.stubGlobal("fetch", fetcher);
     render(<MarketScreen />);
 
-    expect(await screen.findByText("DEMO DATA")).toBeInTheDocument();
+    expect(await screen.findByText("演示数据")).toBeInTheDocument();
     expect(screen.getByText(/两个实时数据源暂时不可用/)).toBeInTheDocument();
 
     fetcher.mockImplementation(async () => liveResponse());
     fireEvent.click(screen.getByRole("button", { name: "重试市场行情" }));
-    expect(await screen.findByText("OKX LIVE")).toBeInTheDocument();
+    expect(await screen.findByText("实时行情")).toBeInTheDocument();
   });
 });

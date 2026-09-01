@@ -1,4 +1,8 @@
-import type { ChartPeriod, MarketCandle, MarketInstrument, MarketTicker } from "./types";
+import type { ChartPeriod, MarketCandle, MarketInstrument, MarketTicker, OrderBookSnapshot } from "./types";
+import { normalizeOkxOrderBook } from "./order-book";
+
+export { OkxBooks5Client } from "./okx-books5-client";
+export { normalizeOkxOrderBook } from "./order-book";
 
 const DEFAULT_OKX_BASE_URL = "https://openapi.okx.com";
 
@@ -143,6 +147,19 @@ export class OkxMarketAdapter {
     url.searchParams.set("limit", String(limit));
     const payload = await this.request(url);
     return normalizeOkxCandles(payload);
+  }
+
+  async getOrderBookForInstrument(instrument: MarketInstrument, depth = 5): Promise<OrderBookSnapshot> {
+    const url = new URL("/api/v5/market/books", this.baseUrl);
+    url.searchParams.set("instId", instrument);
+    url.searchParams.set("sz", String(depth));
+    const response = await this.fetcher(url, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(this.requestTimeoutMs),
+    });
+    if (!response.ok) throw new Error(`OKX request failed with ${response.status}`);
+    return normalizeOkxOrderBook(await response.json(), instrument, depth);
   }
 
   private async request(url: URL): Promise<unknown> {

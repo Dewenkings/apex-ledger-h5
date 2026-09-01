@@ -1,0 +1,7 @@
+# Local visual QA artifacts are committed selectively and are not needed at runtime.
+/*.png
+/*.jpg
+
+# Local-only planning and verification documents.
+/docs/
+/design-qa.md

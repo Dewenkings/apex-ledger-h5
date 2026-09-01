@@ -17,12 +17,11 @@ export function Change({ value }: { value: number }) {
   return <span className={`change ${value >= 0 ? "positive" : "negative"}`}><UpIcon weight="bold" />{Math.abs(value).toFixed(2)}%</span>;
 }
 
-export function FavoriteMarketCard({ market, sourceLabel, sourceDemo = false }: { market: Market; sourceLabel?: string; sourceDemo?: boolean }) {
-  return <article className="favorite-card">
-    <div className="favorite-identity row gap-10"><AssetMark market={market} size={34} /><div><strong>{market.symbol}</strong><span className="muted block">{market.name}</span>{sourceLabel && <small className={`row-source ${sourceDemo ? "demo" : ""}`}>{sourceLabel}</small>}</div></div>
-    <div className="favorite-quote"><Change value={market.change} /><Star weight="fill" className="warning" /></div>
+export function FavoriteMarketCard({ market }: { market: Market }) {
+  return <article className="favorite-card" role="listitem">
+    <div className="favorite-identity"><AssetMark market={market} size={28} /><strong>{market.symbol}</strong><Star weight="fill" className="warning" /></div>
     <div className="favorite-price mono">${market.price.toLocaleString(undefined, { maximumFractionDigits: 4 })}</div>
-    <Sparkline points={market.spark} positive={market.change >= 0} />
+    <div className="favorite-move"><Change value={market.change} /><Sparkline points={market.spark} positive={market.change >= 0} /></div>
   </article>;
 }
 

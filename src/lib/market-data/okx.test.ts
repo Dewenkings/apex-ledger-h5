@@ -1,6 +1,8 @@
 // @vitest-environment node
 
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import * as okxModule from "./okx";
 
 import {
   OkxMarketAdapter,
@@ -10,7 +12,75 @@ import {
   toOkxBar,
 } from "./okx";
 
+const orderBookPayload = {
+  arg: { channel: "books5", instId: "BTC-USDT" },
+  data: [{
+    asks: [
+      ["68343.0", "0.200", "0", "2"],
+      ["68342.0", "0.100", "0", "1"],
+    ],
+    bids: [
+      ["68340.0", "0.300", "0", "3"],
+      ["68341.0", "0.150", "0", "2"],
+    ],
+    ts: "1788048000000",
+    seqId: 42,
+  }],
+};
+
+class FakeSocket {
+  readyState = 0;
+  sent: string[] = [];
+  onopen: (() => void) | null = null;
+  onmessage: ((event: { data: unknown }) => void) | null = null;
+  onerror: (() => void) | null = null;
+  onclose: (() => void) | null = null;
+
+  send(message: string) { this.sent.push(message); }
+  close() { this.readyState = 3; this.onclose?.(); }
+  open() { this.readyState = 1; this.onopen?.(); }
+  message(data: string) { this.onmessage?.({ data }); }
+}
+
+afterEach(() => vi.useRealTimers());
+
 describe("OKX market-data normalization", () => {
+  it("normalizes, sorts, and accumulates a books5 snapshot", () => {
+    const normalize = Reflect.get(okxModule, "normalizeOkxOrderBook");
+    expect(normalize).toBeTypeOf("function");
+    if (typeof normalize !== "function") return;
+
+    const snapshot = normalize(orderBookPayload, "BTC-USDT", 5);
+
+    expect(snapshot).toMatchObject({
+      instrument: "BTC-USDT",
+      timestamp: 1788048000000,
+      sequenceId: 42,
+      asks: [
+        { price: 68342, size: 0.1, orderCount: 1 },
+        { price: 68343, size: 0.2, orderCount: 2 },
+      ],
+      bids: [
+        { price: 68341, size: 0.15, orderCount: 2 },
+        { price: 68340, size: 0.3, orderCount: 3 },
+      ],
+    });
+    expect(snapshot.asks[0].totalQuote).toBeCloseTo(6834.2);
+    expect(snapshot.asks[1].totalQuote).toBeCloseTo(20502.8);
+    expect(snapshot.bids[1].totalQuote).toBeCloseTo(30753.15);
+  });
+
+  it("rejects malformed order-book levels instead of publishing partial depth", () => {
+    const normalize = Reflect.get(okxModule, "normalizeOkxOrderBook");
+    expect(normalize).toBeTypeOf("function");
+    if (typeof normalize !== "function") return;
+
+    expect(() => normalize({
+      ...orderBookPayload,
+      data: [{ ...orderBookPayload.data[0], bids: [["bad", "0.1", "0", "1"]] }],
+    }, "BTC-USDT", 5)).toThrow("Invalid OKX order book payload");
+  });
+
   it.each([
     ["1H", "1H"],
     ["4H", "4H"],
@@ -88,6 +158,26 @@ describe("OKX market-data normalization", () => {
 });
 
 describe("OkxMarketAdapter", () => {
+  it("requests a five-level public order-book snapshot without shared caching", async () => {
+    const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      void input;
+      void init;
+      return Response.json({ code: "0", data: orderBookPayload.data });
+    });
+    const adapter = new OkxMarketAdapter(fetcher);
+    const getOrderBook = Reflect.get(adapter, "getOrderBookForInstrument");
+    expect(getOrderBook).toBeTypeOf("function");
+    if (typeof getOrderBook !== "function") return;
+
+    const snapshot = await getOrderBook.call(adapter, "BTC-USDT", 5);
+
+    const url = new URL(String(fetcher.mock.calls[0][0]));
+    expect(url.origin + url.pathname).toBe("https://openapi.okx.com/api/v5/market/books");
+    expect(Object.fromEntries(url.searchParams)).toEqual({ instId: "BTC-USDT", sz: "5" });
+    expect(fetcher.mock.calls[0][1]).toMatchObject({ cache: "no-store" });
+    expect(snapshot.bids[0].price).toBe(68341);
+  });
+
   it("requests all public spot tickers once and filters the requested instruments", async () => {
     const fetcher = vi.fn(async (input: RequestInfo | URL) => {
       void input;
@@ -148,5 +238,81 @@ describe("OkxMarketAdapter", () => {
       limit: "120",
     });
     expect(fetcher.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal);
+  });
+});
+
+describe("OkxBooks5Client", () => {
+  it("subscribes to books5, emits validated snapshots, and pings an idle connection", () => {
+    vi.useFakeTimers();
+    const Client = Reflect.get(okxModule, "OkxBooks5Client");
+    expect(Client).toBeTypeOf("function");
+    if (typeof Client !== "function") return;
+
+    const socket = new FakeSocket();
+    const snapshots: unknown[] = [];
+    const statuses: string[] = [];
+    const client = new Client({
+      instrument: "BTC-USDT",
+      createSocket: () => socket,
+      onSnapshot: (snapshot: unknown) => snapshots.push(snapshot),
+      onStatus: (status: string) => statuses.push(status),
+      heartbeatMs: 20_000,
+      random: () => 0.5,
+    });
+
+    client.start();
+    socket.open();
+    expect(JSON.parse(socket.sent[0])).toEqual({
+      op: "subscribe",
+      args: [{ channel: "books5", instId: "BTC-USDT" }],
+    });
+
+    socket.message(JSON.stringify(orderBookPayload));
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0]).toMatchObject({ instrument: "BTC-USDT", sequenceId: 42 });
+    expect(statuses).toEqual(["connecting", "live"]);
+
+    vi.advanceTimersByTime(20_000);
+    expect(socket.sent).toContain("ping");
+    client.stop();
+  });
+
+  it("reconnects with bounded backoff and never reconnects after stop", () => {
+    vi.useFakeTimers();
+    const Client = Reflect.get(okxModule, "OkxBooks5Client");
+    expect(Client).toBeTypeOf("function");
+    if (typeof Client !== "function") return;
+
+    const sockets: FakeSocket[] = [];
+    const statuses: string[] = [];
+    const client = new Client({
+      instrument: "BTC-USDT",
+      createSocket: () => {
+        const socket = new FakeSocket();
+        sockets.push(socket);
+        return socket;
+      },
+      onSnapshot: () => undefined,
+      onStatus: (status: string) => statuses.push(status),
+      reconnectBaseDelayMs: 500,
+      reconnectMaxDelayMs: 8_000,
+      random: () => 0.5,
+    });
+
+    client.start();
+    sockets[0].open();
+    sockets[0].close();
+    expect(statuses.at(-1)).toBe("reconnecting");
+
+    vi.advanceTimersByTime(499);
+    expect(sockets).toHaveLength(1);
+    vi.advanceTimersByTime(1);
+    expect(sockets).toHaveLength(2);
+
+    client.stop();
+    sockets[1].close();
+    vi.advanceTimersByTime(60_000);
+    expect(sockets).toHaveLength(2);
+    expect(statuses.at(-1)).toBe("stopped");
   });
 });

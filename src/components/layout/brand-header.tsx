@@ -5,7 +5,7 @@ import { PaperBadge } from "@/components/ui";
 
 export function BrandHeader({ title, subtitle, back }: { title?: string; subtitle?: string; back?: string }) {
   return <header className="topbar">
-    <div className="row gap-12">
+    <div className="row brand-header-main">
       {back
         ? <Link href={back} className="icon-button" aria-label="Back"><ArrowLeft /></Link>
         : <div className="brand-mark">A</div>}

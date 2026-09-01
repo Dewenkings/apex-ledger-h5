@@ -52,6 +52,22 @@ export type MarketCandle = {
   confirmed: boolean;
 };
 
+export type OrderBookLevel = {
+  price: number;
+  size: number;
+  orderCount: number;
+  /** Cumulative quote-currency notional from the best level through this row. */
+  totalQuote: number;
+};
+
+export type OrderBookSnapshot = {
+  instrument: MarketInstrument;
+  asks: OrderBookLevel[];
+  bids: OrderBookLevel[];
+  timestamp: number;
+  sequenceId?: number;
+};
+
 export function isChartPeriod(value: string | null): value is ChartPeriod {
   return chartPeriods.some((period) => period === value);
 }
