@@ -1,4 +1,14 @@
-import type { ChartPeriod, MarketCandle, MarketInstrument, MarketTicker, OrderBookSnapshot } from "./types";
+import Decimal from "decimal.js";
+
+import type {
+  ChartPeriod,
+  MarketCandle,
+  MarketInstrument,
+  MarketTicker,
+  OrderBookSnapshot,
+  SpotInstrumentInfo,
+  SpotMarketSearchResult,
+} from "./types";
 import { normalizeOkxOrderBook } from "./order-book";
 
 export { OkxBooks5Client } from "./okx-books5-client";
@@ -33,6 +43,17 @@ function parseFiniteNumber(value: unknown, errorMessage: string): number {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) throw new Error(errorMessage);
   return parsed;
+}
+
+function requiredString(value: unknown, errorMessage: string): string {
+  if (typeof value !== "string" || value.length === 0) throw new Error(errorMessage);
+  return value;
+}
+
+function positiveDecimalString(value: unknown, errorMessage: string): string {
+  const raw = requiredString(value, errorMessage);
+  if (!new Decimal(raw).greaterThan(0)) throw new Error(errorMessage);
+  return raw;
 }
 
 function getSuccessfulData(payload: unknown, errorMessage: string): unknown[] {
@@ -80,6 +101,86 @@ export function normalizeOkxTickers(payload: unknown, instruments: MarketInstrum
     const row = byInstrument.get(instrument);
     return row ? [normalizeTickerRow(row, instrument)] : [];
   });
+}
+
+function normalizeInstrumentRow(raw: unknown): SpotInstrumentInfo | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  if (row.instType !== "SPOT" || row.quoteCcy !== "USDT") return null;
+
+  try {
+    const listedAt = row.listTime === "" || row.listTime == null
+      ? null
+      : parseFiniteNumber(row.listTime, "Invalid OKX instrument payload");
+    return {
+      instrument: requiredString(row.instId, "Invalid OKX instrument payload"),
+      baseSymbol: requiredString(row.baseCcy, "Invalid OKX instrument payload"),
+      quoteSymbol: requiredString(row.quoteCcy, "Invalid OKX instrument payload"),
+      tickSize: positiveDecimalString(row.tickSz, "Invalid OKX instrument payload"),
+      lotSize: positiveDecimalString(row.lotSz, "Invalid OKX instrument payload"),
+      minSize: positiveDecimalString(row.minSz, "Invalid OKX instrument payload"),
+      state: requiredString(row.state, "Invalid OKX instrument payload"),
+      listedAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function normalizeOkxInstruments(payload: unknown): SpotInstrumentInfo[] {
+  return getSuccessfulData(payload, "Invalid OKX instrument payload")
+    .flatMap((row) => {
+      const instrument = normalizeInstrumentRow(row);
+      return instrument ? [instrument] : [];
+    });
+}
+
+export function normalizeOkxSpotSearch(
+  instruments: SpotInstrumentInfo[],
+  tickerPayload: unknown,
+  rawQuery: string,
+  limit = 20,
+): SpotMarketSearchResult[] {
+  const query = rawQuery.trim().toUpperCase().replace("/", "-");
+  const tickers = new Map(getSuccessfulData(tickerPayload, "Invalid OKX ticker payload").flatMap((raw) => {
+    if (!raw || typeof raw !== "object") return [];
+    const row = raw as Record<string, unknown>;
+    return typeof row.instId === "string" ? [[row.instId, row] as const] : [];
+  }));
+
+  return instruments.flatMap((instrument): SpotMarketSearchResult[] => {
+    if (instrument.state !== "live") return [];
+    const matches = instrument.baseSymbol.includes(query) || instrument.instrument.includes(query);
+    const row = tickers.get(instrument.instrument);
+    if (!matches || !row) return [];
+    try {
+      const last = requiredString(row.last, "Invalid OKX ticker payload");
+      const open24h = requiredString(row.open24h, "Invalid OKX ticker payload");
+      const lastDecimal = new Decimal(last);
+      const open24hDecimal = new Decimal(open24h);
+      const change24h = open24hDecimal.isZero()
+        ? 0
+        : lastDecimal.minus(open24hDecimal).dividedBy(open24hDecimal).times(100).toNumber();
+      return [{
+        ...instrument,
+        last,
+        open24h,
+        high24h: requiredString(row.high24h, "Invalid OKX ticker payload"),
+        low24h: requiredString(row.low24h, "Invalid OKX ticker payload"),
+        volume24h: requiredString(row.vol24h, "Invalid OKX ticker payload"),
+        quoteVolume24h: requiredString(row.volCcy24h, "Invalid OKX ticker payload"),
+        change24h,
+        timestamp: parseFiniteNumber(row.ts, "Invalid OKX ticker payload"),
+      }];
+    } catch {
+      return [];
+    }
+  }).sort((left, right) => {
+    const rank = (item: SpotMarketSearchResult) => item.baseSymbol === query
+      ? 0
+      : item.baseSymbol.startsWith(query) ? 1 : item.instrument.startsWith(query) ? 2 : 3;
+    return rank(left) - rank(right) || new Decimal(right.quoteVolume24h).comparedTo(left.quoteVolume24h);
+  }).slice(0, Math.max(1, Math.min(limit, 20)));
 }
 
 export function normalizeOkxCandles(payload: unknown): MarketCandle[] {
@@ -132,6 +233,27 @@ export class OkxMarketAdapter {
     return normalizeOkxTickers(await this.request(url), instruments);
   }
 
+  async getSpotInstrument(instrument: string): Promise<SpotInstrumentInfo> {
+    const url = new URL("/api/v5/public/instruments", this.baseUrl);
+    url.searchParams.set("instType", "SPOT");
+    url.searchParams.set("instId", instrument);
+    const [result] = normalizeOkxInstruments(await this.request(url, 300));
+    if (!result || result.instrument !== instrument) throw new Error("Invalid OKX instrument payload");
+    return result;
+  }
+
+  async searchSpotMarkets(query: string, limit = 20): Promise<SpotMarketSearchResult[]> {
+    const instrumentsUrl = new URL("/api/v5/public/instruments", this.baseUrl);
+    instrumentsUrl.searchParams.set("instType", "SPOT");
+    const tickersUrl = new URL("/api/v5/market/tickers", this.baseUrl);
+    tickersUrl.searchParams.set("instType", "SPOT");
+    const [instrumentsPayload, tickersPayload] = await Promise.all([
+      this.request(instrumentsUrl, 300),
+      this.request(tickersUrl, 10),
+    ]);
+    return normalizeOkxSpotSearch(normalizeOkxInstruments(instrumentsPayload), tickersPayload, query, limit);
+  }
+
   async getCandles(period: ChartPeriod, limit = 120): Promise<MarketCandle[]> {
     return this.getCandlesForInstrument("BTC-USDT", period, limit);
   }
@@ -162,10 +284,10 @@ export class OkxMarketAdapter {
     return normalizeOkxOrderBook(await response.json(), instrument, depth);
   }
 
-  private async request(url: URL): Promise<unknown> {
+  private async request(url: URL, revalidate = 10): Promise<unknown> {
     const response = await this.fetcher(url, {
       headers: { Accept: "application/json" },
-      next: { revalidate: 10 },
+      next: { revalidate },
       signal: AbortSignal.timeout(this.requestTimeoutMs),
     });
     if (!response.ok) throw new Error(`OKX request failed with ${response.status}`);

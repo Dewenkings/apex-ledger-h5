@@ -41,6 +41,28 @@ export type MarketTicker = {
   timestamp: number;
 };
 
+export type SpotInstrumentInfo = {
+  instrument: string;
+  baseSymbol: string;
+  quoteSymbol: string;
+  tickSize: string;
+  lotSize: string;
+  minSize: string;
+  state: string;
+  listedAt: number | null;
+};
+
+export type SpotMarketSearchResult = SpotInstrumentInfo & {
+  last: string;
+  open24h: string;
+  high24h: string;
+  low24h: string;
+  volume24h: string;
+  quoteVolume24h: string;
+  change24h: number;
+  timestamp: number;
+};
+
 export type MarketCandle = {
   /** Unix timestamp in whole seconds, as expected by charting libraries. */
   time: number;

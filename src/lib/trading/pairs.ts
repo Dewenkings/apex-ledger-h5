@@ -50,6 +50,10 @@ export function getPairBySymbol(value: MarketSymbol): TradingPairConfig | null {
   return tradingPairs.find(({ baseSymbol }) => baseSymbol === value) ?? null;
 }
 
+export function getPairByInstrument(value: string): TradingPairConfig | null {
+  return tradingPairs.find(({ instrument }) => instrument === value) ?? null;
+}
+
 export function formatPairAmount(pair: TradingPairConfig, value: string): string {
   const [whole = "0", fraction = ""] = value.trim().split(".");
   const trimmedFraction = fraction.slice(0, pair.amountDecimals).replace(/0+$/, "");

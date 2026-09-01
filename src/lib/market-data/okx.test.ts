@@ -7,6 +7,8 @@ import * as okxModule from "./okx";
 import {
   OkxMarketAdapter,
   normalizeOkxCandles,
+  normalizeOkxInstruments,
+  normalizeOkxSpotSearch,
   normalizeOkxTicker,
   normalizeOkxTickers,
   toOkxBar,
@@ -45,6 +47,51 @@ class FakeSocket {
 afterEach(() => vi.useRealTimers());
 
 describe("OKX market-data normalization", () => {
+  it("normalizes public spot instrument rules without inventing project metadata", () => {
+    expect(normalizeOkxInstruments({ code: "0", data: [{
+      instType: "SPOT",
+      instId: "BTC-USDT",
+      baseCcy: "BTC",
+      quoteCcy: "USDT",
+      tickSz: "0.1",
+      lotSz: "0.00000001",
+      minSz: "0.00001",
+      state: "live",
+      listTime: "1539820800000",
+    }] })).toEqual([{
+      instrument: "BTC-USDT",
+      baseSymbol: "BTC",
+      quoteSymbol: "USDT",
+      tickSize: "0.1",
+      lotSize: "0.00000001",
+      minSize: "0.00001",
+      state: "live",
+      listedAt: 1539820800000,
+    }]);
+  });
+
+  it("drops instruments with non-positive or malformed execution increments", () => {
+    expect(normalizeOkxInstruments({ code: "0", data: [
+      { instType: "SPOT", instId: "ZERO-USDT", baseCcy: "ZERO", quoteCcy: "USDT", tickSz: "0", lotSz: "1", minSz: "1", state: "live", listTime: "1" },
+      { instType: "SPOT", instId: "BAD-USDT", baseCcy: "BAD", quoteCcy: "USDT", tickSz: "bad", lotSz: "1", minSz: "1", state: "live", listTime: "1" },
+    ] })).toEqual([]);
+  });
+
+  it("joins public instruments with live tickers and ranks exact symbol matches first", () => {
+    const instruments = normalizeOkxInstruments({ code: "0", data: [
+      { instType: "SPOT", instId: "WBTC-USDT", baseCcy: "WBTC", quoteCcy: "USDT", tickSz: "0.1", lotSz: "0.0001", minSz: "0.001", state: "live", listTime: "2" },
+      { instType: "SPOT", instId: "BTC-USDT", baseCcy: "BTC", quoteCcy: "USDT", tickSz: "0.1", lotSz: "0.00001", minSz: "0.0001", state: "live", listTime: "1" },
+    ] });
+    const results = normalizeOkxSpotSearch(instruments, { code: "0", data: [
+      { instId: "WBTC-USDT", last: "69001", open24h: "68000", high24h: "70000", low24h: "67000", vol24h: "10", volCcy24h: "690010", ts: "2000" },
+      { instId: "BTC-USDT", last: "69000", open24h: "68000", high24h: "70000", low24h: "67000", vol24h: "120", volCcy24h: "8280000", ts: "2000" },
+    ] }, "btc", 10);
+
+    expect(results.map(({ instrument }) => instrument)).toEqual(["BTC-USDT", "WBTC-USDT"]);
+    expect(results[0]).toMatchObject({ last: "69000", quoteVolume24h: "8280000" });
+    expect(results[0].change24h).toBeCloseTo(1.4705882352941175);
+  });
+
   it("normalizes, sorts, and accumulates a books5 snapshot", () => {
     const normalize = Reflect.get(okxModule, "normalizeOkxOrderBook");
     expect(normalize).toBeTypeOf("function");
@@ -158,6 +205,23 @@ describe("OKX market-data normalization", () => {
 });
 
 describe("OkxMarketAdapter", () => {
+  it("requests public instruments and tickers for server-side spot search", async () => {
+    const fetcher = vi.fn(async (input: RequestInfo | URL) => {
+      const pathname = new URL(String(input)).pathname;
+      return Response.json(pathname.endsWith("/public/instruments")
+        ? { code: "0", data: [{ instType: "SPOT", instId: "DOGE-USDT", baseCcy: "DOGE", quoteCcy: "USDT", tickSz: "0.00001", lotSz: "1", minSz: "1", state: "live", listTime: "1000" }] }
+        : { code: "0", data: [{ instId: "DOGE-USDT", last: "0.2", open24h: "0.19", high24h: "0.21", low24h: "0.18", vol24h: "1000", volCcy24h: "200", ts: "2000" }] });
+    });
+
+    const result = await new OkxMarketAdapter(fetcher).searchSpotMarkets("doge", 10);
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher.mock.calls.map(([input]) => new URL(String(input)).pathname)).toEqual([
+      "/api/v5/public/instruments",
+      "/api/v5/market/tickers",
+    ]);
+    expect(result).toEqual([expect.objectContaining({ instrument: "DOGE-USDT", last: "0.2" })]);
+  });
   it("requests a five-level public order-book snapshot without shared caching", async () => {
     const fetcher = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       void input;

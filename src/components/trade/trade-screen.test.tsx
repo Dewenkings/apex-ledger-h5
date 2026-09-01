@@ -62,19 +62,42 @@ describe("TradeScreen live market integration", () => {
     expect(await screen.findByDisplayValue("70000.00")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "ETH/USDT" })).toBeInTheDocument();
     expect(screen.getByText("现货")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /AI 信号/ })).toBeDisabled();
-    expect(screen.getByText("即将上线")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "收藏 ETH/USDT" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /AI 信号/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "收藏 ETH/USDT" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "更多行情选项" })).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "行情" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel", { name: "行情" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "买入 ETH" })).toBeInTheDocument();
     expect(screen.getAllByText("PAPER LIVE").length).toBeGreaterThan(0);
     expect(screen.getByText("模拟撮合环境，不会请求钱包交易签名或扣除真实资产")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "1D" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("button", { name: "EMA" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "1H" }));
 
     await waitFor(() => {
       expect(fetcher.mock.calls.some(([url]) => String(url) === "/api/market/candles?instrument=ETH-USDT&period=1H")).toBe(true);
     });
+  });
+
+  it("replaces the market terminal with real public instrument information", async () => {
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/market/instrument")) return Promise.resolve(Response.json({ data: {
+        instrument: "ETH-USDT", baseSymbol: "ETH", quoteSymbol: "USDT", state: "live",
+        tickSize: "0.01", lotSize: "0.00000001", minSize: "0.0001", listedAt: 1438992000000,
+      } }));
+      return Promise.resolve(Response.json({ source: "okx", data: url.includes("/ticker") ? ticker : candles }));
+    }));
+    render(<TradeScreen pair={tradingPairs[1]} />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "信息" }));
+
+    expect(await screen.findByText("交易规则")).toBeInTheDocument();
+    expect(screen.getByText("0.0001 ETH")).toBeInTheDocument();
+    expect(screen.getByText("0.01 USDT")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "买入 ETH" })).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "信息" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel", { name: "信息" })).toBeInTheDocument();
   });
 });

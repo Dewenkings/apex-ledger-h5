@@ -71,9 +71,7 @@ export function TradeMarketPanel({ pair, onPriceChange }: { pair: TradingPairCon
         </div>
       </div>
       <CandlestickChart instrument={pair.instrument} candles={market.candles} />
-      <div className="indicator-tabs" aria-label="图表指标">
-        {(["MA", "EMA", "BOLL", "VOL"] as const).map((indicator) => <button type="button" aria-pressed={indicator === "MA"} className={indicator === "MA" ? "active" : ""} key={indicator}>{indicator}</button>)}
-      </div>
+      <div className="chart-data-note"><span>蜡烛图</span><b>公开实时行情</b></div>
       {market.hasError && <div className="market-error">
         <WarningCircle />
         <span>实时行情暂时不可用，当前展示演示回退数据。</span>

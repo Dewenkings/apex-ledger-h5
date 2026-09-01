@@ -1,14 +1,17 @@
 "use client";
 
-import { Bell, Clock, MagnifyingGlass, SlidersHorizontal, WarningCircle } from "@phosphor-icons/react";
+import { ArrowRight, Clock, MagnifyingGlass, SlidersHorizontal, WarningCircle } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { AssetMark, Change, FavoriteMarketCard, PaperBadge } from "@/components/ui";
 import { filterMarkets } from "@/lib/trading";
-import { getPairBySymbol } from "@/lib/trading/pairs";
+import { getPairByInstrument, getPairBySymbol } from "@/lib/trading/pairs";
+import type { SpotMarketSearchResult } from "@/lib/market-data/types";
+import { formatSpotPrice } from "@/lib/market-data/market-format";
 import { useMarketOverview, type OverviewMarket } from "./use-market-overview";
+import { useMarketSearch } from "./use-market-search";
 
 const priceFormatter = new Intl.NumberFormat("en-US", { maximumFractionDigits: 4 });
 const updateFormatter = new Intl.DateTimeFormat("zh-CN", {
@@ -25,8 +28,9 @@ function MarketDestination({ market, children }: { market: OverviewMarket; child
 export function MarketScreen() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
-  const [mode, setMode] = useState<"favorites" | "spot" | "gainers">("favorites");
+  const [mode, setMode] = useState<"spot" | "gainers">("spot");
   const overview = useMarketOverview();
+  const search = useMarketSearch(query);
   const visible = useMemo(
     () => {
       const filtered = filterMarkets(overview.markets, query)
@@ -42,11 +46,11 @@ export function MarketScreen() {
         <div className="brand-mark">A</div>
         <div><span className="market-kicker">APEX LEDGER</span><h1>行情概览</h1></div>
       </div>
-      <div className="market-header-actions"><PaperBadge /><button className="icon-button" aria-label="行情提醒"><Bell /></button></div>
+      <div className="market-header-actions"><PaperBadge /></div>
     </header>
 
     <nav className="market-mode-tabs" aria-label="行情分类" role="tablist">
-      {([['favorites', '自选'], ['spot', '现货'], ['gainers', '涨幅榜']] as const).map(([key, label]) => <button type="button" role="tab" aria-selected={mode === key} className={mode === key ? "active" : ""} onClick={() => setMode(key)} key={key}>{label}</button>)}
+      {([['spot', '现货'], ['gainers', '涨幅榜']] as const).map(([key, label]) => <button type="button" role="tab" aria-selected={mode === key} className={mode === key ? "active" : ""} onClick={() => setMode(key)} key={key}>{label}</button>)}
     </nav>
 
     {overview.isInitialLoading ? <MarketOverviewLoading /> : <>
@@ -68,7 +72,7 @@ export function MarketScreen() {
 
       <label className="search"><MagnifyingGlass /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索资产或交易对" /></label>
 
-      <section>
+      {search.isActive ? <MarketSearchResults query={query} search={search} /> : <><section>
         <div className="section-title"><h3>市场动向</h3><span className="muted">24H · USDT</span></div>
         <div className="favorite-grid" role="list" aria-label="自选行情">{overview.markets.slice(0, 3).map((market) => <MarketDestination market={market} key={market.symbol}>
           <FavoriteMarketCard market={market} />
@@ -76,7 +80,7 @@ export function MarketScreen() {
       </section>
 
       <section>
-        <div className="section-title"><h3>全部资产</h3><SlidersHorizontal className="muted" /></div>
+        <div className="section-title"><h3>全部资产</h3><SlidersHorizontal className="muted" aria-hidden="true" /></div>
         <div className="chip-row">{["All", "Layer 1", "DeFi", "Payments"].map((item) => <button type="button" aria-pressed={category === item} onClick={() => setCategory(item)} className={`chip ${category === item ? "active" : ""}`} key={item}>{item}</button>)}</div>
         <div className="market-list">
           <div className="table-head"><span>资产</span><span>价格</span><span>24H 涨跌</span></div>
@@ -89,9 +93,36 @@ export function MarketScreen() {
           </MarketDestination>)}
         </div>
         {visible.length === 0 && <div className="empty"><MagnifyingGlass /><strong>没有匹配的资产</strong><span>换个关键词试试看</span></div>}
-      </section>
+      </section></>}
     </>}
   </AppShell>;
+}
+
+function MarketSearchResults({
+  query,
+  search,
+}: {
+  query: string;
+  search: ReturnType<typeof useMarketSearch>;
+}) {
+  return <section className="market-search-results" aria-live="polite">
+    <div className="section-title"><div><span className="market-kicker">PUBLIC SPOT MARKETS</span><h3>搜索结果</h3></div><span className="muted">{query.trim().toUpperCase()}</span></div>
+    {search.state === "loading" && <div className="search-state" role="status"><i />正在检索实时现货市场</div>}
+    {search.state === "error" && <div className="search-state error" role="alert"><WarningCircle /><span>市场检索暂时不可用</span><button type="button" onClick={search.retry}>重试</button></div>}
+    {search.state === "ready" && search.results.length === 0 && <div className="empty"><MagnifyingGlass /><strong>没有匹配的现货交易对</strong><span>可以尝试币种简称，例如 DOGE</span></div>}
+    {search.results.length > 0 && <div className="market-search-list">{search.results.map((result) => <MarketSearchResultRow result={result} key={result.instrument} />)}</div>}
+    <p className="search-disclosure">结果来自公开现货市场，输入会在停止键入后检索，避免无效请求。</p>
+  </section>;
+}
+
+function MarketSearchResultRow({ result }: { result: SpotMarketSearchResult }) {
+  const pair = getPairByInstrument(result.instrument);
+  const content = <div className="market-search-row" data-testid={`search-result-${result.baseSymbol}`}>
+    <div className="search-asset"><span>{result.baseSymbol.slice(0, 1)}</span><div><strong>{result.baseSymbol}</strong><small>{result.baseSymbol} / {result.quoteSymbol}</small></div></div>
+    <div className="search-price"><strong className="mono">{formatSpotPrice(result.last, result.tickSize, result.quoteSymbol)}</strong><Change value={result.change24h} /></div>
+    {pair ? <ArrowRight className="search-row-arrow" /> : <span className="quote-only">仅行情</span>}
+  </div>;
+  return pair ? <Link href={`/trade/${pair.pairSlug}`}>{content}</Link> : content;
 }
 
 function MarketOverviewLoading() {

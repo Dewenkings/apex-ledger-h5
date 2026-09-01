@@ -126,16 +126,69 @@
   .instrument-title h1 { @apply m-0 whitespace-nowrap text-[18px] leading-none tracking-[-0.035em]; }
   .instrument-subtitle { @apply mt-1.5 block font-mono text-[7px] font-bold tracking-[0.13em] text-muted; }
   .spot-badge { @apply rounded-[5px] border border-line bg-surface-raised px-1.5 py-1 text-[8px] font-bold text-muted; }
-  .instrument-actions { @apply flex shrink-0 items-center gap-0; }
+  .instrument-actions { @apply flex shrink-0 items-center gap-1.5; }
+  .instrument-actions > .spot-badge { @apply px-2 py-1.5; }
   .instrument-actions .paper-badge { @apply mr-1 px-2 py-1.5 text-[7px]; }
   .instrument-actions .icon-button { @apply size-8; }
   .instrument-actions .icon-button svg { @apply size-[18px]; }
-  .instrument-actions .ai-header-action { @apply text-primary disabled:opacity-70; }
   .trade-page-tabs { @apply -mx-4 mb-0 flex h-11 items-end gap-7 border-b border-line px-4; }
   .trade-page-tabs button { @apply relative h-11 border-0 bg-transparent p-0 text-[12px] font-bold text-muted; }
   .trade-page-tabs button.active { @apply text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary; }
   .trade-page-tabs button:disabled { @apply cursor-not-allowed opacity-60; }
   .trade-page-tabs button span { @apply ml-1 rounded-full border border-line px-1.5 py-0.5 text-[7px] font-medium; }
+  .instrument-info-view { @apply pt-3; }
+  .instrument-info-hero { @apply flex items-start justify-between gap-3 rounded-[15px] border border-line bg-surface-raised p-4; background-image: radial-gradient(circle at 90% 0, #44e09217, transparent 42%); }
+  .instrument-info-hero h2 { @apply mt-1.5 mb-1 text-[22px] tracking-[-0.04em]; }
+  .instrument-info-hero p { @apply m-0 text-[11px] text-muted; }
+  .instrument-state { @apply inline-flex shrink-0 items-center gap-1 rounded-full border border-line bg-surface px-2 py-1.5 font-mono text-[10px] font-bold text-muted; }
+  .instrument-state.live { @apply border-primary/20 bg-primary/[0.06] text-primary; }
+  .instrument-state svg { @apply size-3; }
+  .instrument-info-section { @apply mt-3 rounded-[13px] border border-line bg-surface p-3.5; }
+  .instrument-info-heading { @apply flex items-start justify-between; }
+  .instrument-info-heading h3 { @apply mt-1 mb-0 text-[15px]; }
+  .instrument-info-heading > svg { @apply size-5 text-primary; }
+  .instrument-rule-grid { @apply mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-[10px] border border-line bg-line; }
+  .instrument-rule-grid > div { @apply min-w-0 bg-[#111618] p-3; }
+  .instrument-rule-grid dt { @apply text-[11px] text-muted; }
+  .instrument-rule-grid dd { @apply mt-1.5 mb-0 truncate font-mono text-[11px] font-bold text-foreground; }
+  .instrument-info-section.compact { @apply grid gap-0 p-0; }
+  .instrument-fact { @apply grid grid-cols-[20px_1fr_auto] items-center gap-2 border-b border-line px-3.5 py-3 last:border-b-0; }
+  .instrument-fact svg { @apply size-4 text-primary; }
+  .instrument-fact span { @apply text-[11px] text-muted; }
+  .instrument-fact strong { @apply text-[11px]; }
+  .instrument-info-note { @apply mx-2 mt-3 text-[10px] leading-relaxed text-muted; }
+  .instrument-info-loading { @apply grid gap-3 pt-3; }
+  .instrument-info-hero-skeleton { @apply h-[104px]; }
+  .instrument-info-grid-skeleton { @apply h-[216px]; }
+  .instrument-info-error { @apply mt-3 flex items-center gap-2.5 rounded-[13px] border border-warning/20 bg-warning/[0.05] p-3.5; }
+  .instrument-info-error > svg { @apply size-5 shrink-0 text-warning; }
+  .instrument-info-error > div { @apply flex-1; }
+  .instrument-info-error strong { @apply block text-[12px]; }
+  .instrument-info-error span { @apply mt-1 block text-[11px] text-muted; }
+  .instrument-info-error button { @apply rounded-md border border-warning/30 bg-transparent px-2 py-1 text-[11px] font-bold text-warning; }
+
+  .market-search-results { @apply min-h-[420px]; }
+  .market-search-results .section-title > div h3 { @apply mt-1 mb-0; }
+  .market-search-list { @apply overflow-hidden rounded-[13px] border border-line bg-surface; }
+  .market-search-list > a { @apply block; }
+  .market-search-row { @apply grid min-h-[66px] grid-cols-[minmax(88px,1fr)_minmax(116px,auto)_48px] items-center gap-2 border-b border-line px-3 last:border-b-0 hover:bg-surface-raised; }
+  .search-asset { @apply flex min-w-0 items-center gap-2.5; }
+  .search-asset > span { @apply grid size-8 shrink-0 place-items-center rounded-full border border-primary/20 bg-primary/[0.07] text-[11px] font-black text-primary; }
+  .search-asset strong { @apply block text-[12px]; }
+  .search-asset small { @apply mt-1 block font-mono text-[10px] text-muted; }
+  .search-price { @apply grid justify-items-end gap-1; }
+  .search-price > strong { @apply text-[10px]; }
+  .search-price .change { @apply text-[10px]; }
+  .search-row-arrow { @apply ml-auto size-4 text-primary; }
+  .quote-only { @apply justify-self-end rounded-full border border-line px-2 py-1 font-mono text-[10px] text-muted; }
+  .search-state { @apply flex min-h-[120px] items-center justify-center gap-2 rounded-[13px] border border-line bg-surface text-[11px] text-muted; }
+  .search-state > i { @apply size-2 animate-pulse rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)]; }
+  .search-state.error { @apply border-warning/20 text-warning; }
+  .search-state.error svg { @apply size-4; }
+  .search-state.error button { @apply ml-2 rounded-md border border-warning/30 bg-transparent px-2 py-1 text-[11px] text-warning; }
+  .search-disclosure { @apply mx-2 mt-3 text-center text-[10px] leading-relaxed text-muted; }
+  .chart-data-note { @apply flex h-10 items-center justify-between border-t border-line px-3 text-[10px] text-muted; }
+  .chart-data-note b { @apply font-mono text-[9px] text-primary; }
   .trade-quote-summary { @apply -mx-4 grid grid-cols-[1.05fr_.95fr] gap-5 border-b border-line px-4 py-4; }
   .trade-primary-quote { @apply flex min-w-0 flex-col justify-center; }
   .trade-quote-label { @apply mb-1.5 flex items-center gap-1.5 text-[9px] font-bold text-muted; }
