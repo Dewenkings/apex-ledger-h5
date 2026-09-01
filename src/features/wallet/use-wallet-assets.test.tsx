@@ -44,6 +44,19 @@ describe("useWalletAssets", () => {
     ]);
   });
 
+  it("formats the 18-decimal BSC USDT balance on BNB Smart Chain", () => {
+    mocks.balance.data = { value: BigInt("8945000000000000"), symbol: "BNB", decimals: 18 };
+    mocks.contracts.data = [{ status: "success", result: BigInt("7060000000000000000") }];
+
+    const { result } = renderHook(() => useWalletAssets("0x0000000000000000000000000000000000000001", 56));
+
+    expect(result.current.state).toBe("ready");
+    expect(result.current.assets).toEqual([
+      expect.objectContaining({ chainId: 56, symbol: "BNB", balance: "0.008945" }),
+      expect.objectContaining({ chainId: 56, symbol: "USDT", balance: "7.06", decimals: 18 }),
+    ]);
+  });
+
   it("reports a stale state while refreshing previously loaded balances", () => {
     mocks.balance.isFetching = true;
     const { result } = renderHook(() => useWalletAssets("0x0000000000000000000000000000000000000001", 1));

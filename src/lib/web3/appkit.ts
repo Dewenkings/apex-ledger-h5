@@ -2,12 +2,12 @@
 
 import { createAppKit } from "@reown/appkit/react";
 import { WagmiAdapter } from "@reown/appkit-adapter-wagmi";
-import { arbitrum, base, mainnet } from "@reown/appkit/networks";
+import { arbitrum, base, bsc, mainnet } from "@reown/appkit/networks";
 import { cookieStorage, createStorage } from "wagmi";
 
 import { readReownProjectId } from "./chains";
 
-export const appKitNetworks: [typeof mainnet, typeof base, typeof arbitrum] = [mainnet, base, arbitrum];
+export const appKitNetworks: [typeof mainnet, typeof base, typeof arbitrum, typeof bsc] = [mainnet, base, arbitrum, bsc];
 export const reownProjectId = readReownProjectId({
   NEXT_PUBLIC_REOWN_PROJECT_ID: process.env.NEXT_PUBLIC_REOWN_PROJECT_ID,
 });

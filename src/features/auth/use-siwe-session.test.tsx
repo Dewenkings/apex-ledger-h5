@@ -73,6 +73,21 @@ describe("useSiweSession", () => {
     expect(result.current.status).toBe("authenticated");
   });
 
+  it("allows a BNB Smart Chain wallet to sign in", async () => {
+    mocks.account.address = "0x0000000000000000000000000000000000000001";
+    mocks.account.chainId = 56;
+    mocks.account.isConnected = true;
+    mocks.verifySiwe.mockResolvedValue({ authenticated: true, address: mocks.account.address, chainId: 56, expiresAt: 1 });
+    const { result } = renderHook(() => useSiweSession(), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe("connected"));
+
+    await act(() => result.current.signIn());
+
+    expect(result.current.unsupportedNetwork).toBe(false);
+    expect(mocks.signMessageAsync).toHaveBeenCalledTimes(1);
+    expect(result.current.status).toBe("authenticated");
+  });
+
   it("blocks unsupported networks before requesting a signature", async () => {
     mocks.account.address = "0x0000000000000000000000000000000000000001";
     mocks.account.chainId = 137;
@@ -84,7 +99,7 @@ describe("useSiweSession", () => {
     await act(() => result.current.signIn());
 
     expect(result.current.status).toBe("error");
-    expect(result.current.error).toMatch(/Ethereum、Base 或 Arbitrum/);
+    expect(result.current.error).toMatch(/Ethereum、Base、Arbitrum 或 BNB Smart Chain/);
     expect(mocks.signMessageAsync).not.toHaveBeenCalled();
   });
 

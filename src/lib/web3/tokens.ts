@@ -6,7 +6,7 @@ export type TrackedToken = Readonly<{
   chainId: SupportedChainId;
   address: Address;
   symbol: "USDC" | "USDT";
-  decimals: 6;
+  decimals: 6 | 18;
 }>;
 
 export const TOKENS_BY_CHAIN: Readonly<Record<SupportedChainId, readonly TrackedToken[]>> = {
@@ -19,6 +19,9 @@ export const TOKENS_BY_CHAIN: Readonly<Record<SupportedChainId, readonly Tracked
   ],
   42161: [
     { chainId: 42161, address: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", symbol: "USDC", decimals: 6 },
+  ],
+  56: [
+    { chainId: 56, address: "0x55d398326f99059fF775485246999027B3197955", symbol: "USDT", decimals: 18 },
   ],
 };
 

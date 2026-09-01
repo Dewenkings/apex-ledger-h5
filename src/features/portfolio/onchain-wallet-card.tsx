@@ -26,7 +26,7 @@ export function OnchainWalletCard({
       {!connected ? (
         <Link className="wallet-connect-card" href="/connect-wallet" aria-label="连接钱包读取链上余额"><LinkSimple /><div><strong>连接钱包读取链上余额</strong><span>仅访问公开地址与白名单 Token</span></div><ArrowRight /></Link>
       ) : state === "unsupported" ? (
-        <div className="wallet-chain-state unsupported"><WarningCircle /><div><strong>当前网络暂不支持</strong><span>请选择 Ethereum、Base 或 Arbitrum</span></div><Link href="/settings" aria-label="切换网络">切换网络</Link></div>
+        <div className="wallet-chain-state unsupported"><WarningCircle /><div><strong>当前网络暂不支持</strong><span>请选择 Ethereum、Base、Arbitrum 或 BNB Smart Chain</span></div><Link href="/settings" aria-label="切换网络">切换网络</Link></div>
       ) : state === "loading" ? (
         <div className="wallet-chain-state" role="status"><SpinnerGap className="wallet-spinner" />正在读取链上余额…</div>
       ) : state === "error" ? (

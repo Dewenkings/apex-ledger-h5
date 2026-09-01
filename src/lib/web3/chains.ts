@@ -1,6 +1,6 @@
-import { arbitrum, base, mainnet } from "viem/chains";
+import { arbitrum, base, bsc, mainnet } from "viem/chains";
 
-export const SUPPORTED_CHAINS = [mainnet, base, arbitrum] as const;
+export const SUPPORTED_CHAINS = [mainnet, base, arbitrum, bsc] as const;
 export type SupportedChainId = (typeof SUPPORTED_CHAINS)[number]["id"];
 
 const SUPPORTED_CHAIN_IDS = new Set<number>(SUPPORTED_CHAINS.map((chain) => chain.id));

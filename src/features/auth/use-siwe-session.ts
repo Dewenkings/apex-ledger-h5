@@ -51,7 +51,7 @@ export function useSiweSession() {
   const signIn = useCallback(async () => {
     if (!account.isConnected || !account.address || typeof account.chainId !== "number") return;
     if (!isSupportedChainId(account.chainId)) {
-      setError("请切换至 Ethereum、Base 或 Arbitrum 网络");
+      setError("请切换至 Ethereum、Base、Arbitrum 或 BNB Smart Chain 网络");
       return;
     }
     setOperation("signing");
@@ -115,7 +115,7 @@ export function useSiweSession() {
 
 function toFriendlyError(error: unknown): string {
   if (error instanceof AuthClientError) {
-    if (error.code === "unsupported_chain") return "请切换至 Ethereum、Base 或 Arbitrum 网络";
+    if (error.code === "unsupported_chain") return "请切换至 Ethereum、Base、Arbitrum 或 BNB Smart Chain 网络";
     if (error.code === "rate_limited") return "登录尝试过于频繁，请稍后再试";
     return error.message;
   }

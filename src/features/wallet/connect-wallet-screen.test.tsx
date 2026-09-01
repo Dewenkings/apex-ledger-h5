@@ -55,6 +55,13 @@ describe("ConnectWalletScreen", () => {
     expect(mocks.signIn).toHaveBeenCalledTimes(1);
   });
 
+  it("labels BNB Smart Chain when that network is connected", () => {
+    Object.assign(mocks.session, { status: "connected", address: "0x0000000000000000000000000000000000000001", chainId: 56 });
+    render(<ConnectWalletScreen />);
+    expect(screen.getByText("BNB Smart Chain")).toBeInTheDocument();
+    expect(screen.getByText(/支持 Ethereum、Base、Arbitrum 与 BNB Smart Chain/)).toBeInTheDocument();
+  });
+
   it("renders signing and authenticated states", () => {
     Object.assign(mocks.session, { status: "signing", address: "0x0000000000000000000000000000000000000001", chainId: 1 });
     const { rerender } = render(<ConnectWalletScreen />);
@@ -71,7 +78,7 @@ describe("ConnectWalletScreen", () => {
       address: "0x0000000000000000000000000000000000000001",
       chainId: 137,
       unsupportedNetwork: true,
-      error: "请切换至 Ethereum、Base 或 Arbitrum 网络",
+      error: "请切换至 Ethereum、Base、Arbitrum 或 BNB Smart Chain 网络",
     });
     render(<ConnectWalletScreen />);
     fireEvent.click(screen.getByRole("button", { name: "切换网络" }));

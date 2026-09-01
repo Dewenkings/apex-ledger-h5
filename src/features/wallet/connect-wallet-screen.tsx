@@ -9,7 +9,7 @@ import { useDisconnect } from "wagmi";
 import { AppShell } from "@/components/layout/app-shell";
 import { useSiweSession } from "@/features/auth/use-siwe-session";
 
-const CHAIN_NAMES: Record<number, string> = { 1: "Ethereum", 8453: "Base", 42161: "Arbitrum" };
+const CHAIN_NAMES: Record<number, string> = { 1: "Ethereum", 8453: "Base", 42161: "Arbitrum", 56: "BNB Smart Chain" };
 
 export function ConnectWalletScreen() {
   const { open } = useAppKit();
@@ -90,7 +90,7 @@ export function ConnectWalletScreen() {
           )}
 
           <div className="siwe-note"><ShieldCheck /><div><strong>安全登录，不是支付</strong><span>没有私钥上传、没有链上交易，也不会读取或合并 OKX Demo 虚拟资金。</span></div></div>
-          <p className="legal">本项目不托管资产。支持 Ethereum、Base 与 Arbitrum。</p>
+          <p className="legal">本项目不托管资产。支持 Ethereum、Base、Arbitrum 与 BNB Smart Chain。</p>
           <Link href="/markets" className="secondary-button">稍后再说</Link>
         </section>
       </div>
