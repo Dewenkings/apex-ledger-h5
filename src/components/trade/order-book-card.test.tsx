@@ -30,7 +30,7 @@ afterEach(() => {
 });
 
 describe("OrderBookCard", () => {
-  it("hydrates from REST and upgrades to live books5 snapshots", async () => {
+  it("pairs live bid and ask levels in a compact two-sided book", async () => {
     const componentPath = "./order-book-card";
     const componentModule = await import(/* @vite-ignore */ componentPath).catch(() => null);
     expect(componentModule).not.toBeNull();
@@ -47,6 +47,13 @@ describe("OrderBookCard", () => {
     render(<componentModule.OrderBookCard pair={tradingPairs[0]} />);
 
     expect(await screen.findByText("68,342.20")).toBeInTheDocument();
+    expect(screen.getByText("买量")).toBeInTheDocument();
+    expect(screen.getByText("买价")).toBeInTheDocument();
+    expect(screen.getByText("卖价")).toBeInTheDocument();
+    expect(screen.getByText("卖量")).toBeInTheDocument();
+    expect(screen.getByText("B 54%")).toBeInTheDocument();
+    expect(screen.getByText("46% S")).toBeInTheDocument();
+    expect(screen.queryByText(/累计/)).not.toBeInTheDocument();
     expect(screen.getByText("REST SNAPSHOT")).toBeInTheDocument();
     await waitFor(() => expect(sockets).toHaveLength(1));
     sockets[0].open();
@@ -69,6 +76,7 @@ describe("OrderBookCard", () => {
     expect(screen.getByText("实时同步")).toBeInTheDocument();
     expect(screen.queryByText(/OKX/)).not.toBeInTheDocument();
     expect(screen.getByText("0.50 USDT")).toBeInTheDocument();
+    expect(screen.getByRole("row", { name: /0\.3 68,349\.50 68,350\.00 0\.4/ })).toBeInTheDocument();
   });
 
   it("shows a recoverable connection state instead of fabricated depth", async () => {

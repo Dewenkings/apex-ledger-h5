@@ -7,19 +7,31 @@ import type { TradingPairConfig } from "@/lib/trading/pairs";
 import { useLiveOrderBook } from "./use-live-order-book";
 
 const amountFormatter = new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 });
-const totalFormatter = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 2 });
+function formatPrice(value: number | undefined, priceDecimals: number): string {
+  return value === undefined
+    ? "—"
+    : value.toLocaleString("en-US", {
+      minimumFractionDigits: priceDecimals,
+      maximumFractionDigits: priceDecimals,
+    });
+}
 
-function DepthRow({ level, side, maxTotal, priceDecimals }: {
-  level: OrderBookLevel;
-  side: "buy" | "sell";
-  maxTotal: number;
+function PairedDepthRow({ bid, ask, maxSize, priceDecimals }: {
+  bid?: OrderBookLevel;
+  ask?: OrderBookLevel;
+  maxSize: number;
   priceDecimals: number;
 }) {
-  const depth = maxTotal > 0 ? Math.max(3, (level.totalQuote / maxTotal) * 100) : 0;
-  return <div className={`orderbook-grid orderbook-row ${side}`} style={{ "--depth": `${depth}%` } as CSSProperties}>
-    <b>{level.price.toLocaleString("en-US", { minimumFractionDigits: priceDecimals, maximumFractionDigits: priceDecimals })}</b>
-    <span>{amountFormatter.format(level.size)}</span>
-    <span>{totalFormatter.format(level.totalQuote)}</span>
+  const bidDepth = bid ? Math.max(4, bid.size / maxSize * 100) : 0;
+  const askDepth = ask ? Math.max(4, ask.size / maxSize * 100) : 0;
+  return <div className="orderbook-pair-row" role="row" style={{
+    "--bid-depth": `${bidDepth}%`,
+    "--ask-depth": `${askDepth}%`,
+  } as CSSProperties}>
+    <span className="book-size bid-size">{bid ? amountFormatter.format(bid.size) : "—"}</span>
+    <b className="book-price bid-price">{formatPrice(bid?.price, priceDecimals)}</b>
+    <b className="book-price ask-price">{formatPrice(ask?.price, priceDecimals)}</b>
+    <span className="book-size ask-size">{ask ? amountFormatter.format(ask.size) : "—"}</span>
   </div>;
 }
 
@@ -34,25 +46,40 @@ export function OrderBookCard({ pair }: { pair: TradingPairConfig }) {
   const { snapshot, status } = useLiveOrderBook(pair);
   const asks = snapshot?.asks ?? [];
   const bids = snapshot?.bids ?? [];
-  const maxTotal = Math.max(1, ...asks.map((level) => level.totalQuote), ...bids.map((level) => level.totalQuote));
   const bestAsk = asks[0]?.price;
   const bestBid = bids[0]?.price;
   const midpoint = bestAsk && bestBid ? (bestAsk + bestBid) / 2 : 0;
   const spread = bestAsk && bestBid ? bestAsk - bestBid : 0;
+  const bidSize = bids.reduce((total, level) => total + level.size, 0);
+  const askSize = asks.reduce((total, level) => total + level.size, 0);
+  const visibleSize = bidSize + askSize;
+  const bidShare = visibleSize > 0 ? Math.round(bidSize / visibleSize * 100) : 50;
+  const askShare = 100 - bidShare;
+  const maxSize = Math.max(1e-12, ...bids.map((level) => level.size), ...asks.map((level) => level.size));
+  const rowCount = Math.max(bids.length, asks.length);
 
   return <section className="orderbook-card" aria-label={`${pair.instrument} 实时深度`}>
     <div className="orderbook-heading">
-      <div><span className="trade-kicker">PUBLIC BOOKS5</span><h2>实时深度</h2></div>
+      <div><span className="trade-kicker">PUBLIC LIQUIDITY</span><h2>订单簿</h2></div>
       <div className="orderbook-status"><span className={`market-source ${status === "live" ? "" : "fallback"}`}>{statusLabels[status]}</span><small>100ms snapshot</small></div>
     </div>
     {snapshot ? <div className="orderbook">
-      <div className="orderbook-grid orderbook-head"><span>价格 ({pair.quoteSymbol})</span><span>数量 ({pair.baseSymbol})</span><span>累计 ({pair.quoteSymbol})</span></div>
-      {[...asks].reverse().map((level) => <DepthRow key={`ask-${level.price}`} level={level} side="sell" maxTotal={maxTotal} priceDecimals={pair.priceDecimals} />)}
-      <div className="orderbook-mid">
-        <div><strong className="mono">{midpoint.toLocaleString("en-US", { minimumFractionDigits: pair.priceDecimals, maximumFractionDigits: pair.priceDecimals })}</strong><span>中间价</span></div>
-        <div><span>价差</span><b className="mono">{spread.toFixed(pair.priceDecimals)} {pair.quoteSymbol}</b></div>
+      <div className="book-balance" aria-label={`可见深度买方 ${bidShare}%，卖方 ${askShare}%`}>
+        <b>B {bidShare}%</b>
+        <div aria-hidden="true"><i style={{ width: `${bidShare}%` }} /></div>
+        <b>{askShare}% S</b>
       </div>
-      {bids.map((level) => <DepthRow key={`bid-${level.price}`} level={level} side="buy" maxTotal={maxTotal} priceDecimals={pair.priceDecimals} />)}
+      <div className="orderbook-spread">
+        <span>中间价 <strong className="mono">{formatPrice(midpoint, pair.priceDecimals)}</strong></span>
+        <span>价差 <b className="mono">{spread.toFixed(pair.priceDecimals)} {pair.quoteSymbol}</b></span>
+      </div>
+      <div className="orderbook-pair-head" role="row">
+        <span role="columnheader">买量</span><span role="columnheader">买价</span>
+        <span role="columnheader">卖价</span><span role="columnheader">卖量</span>
+      </div>
+      <div className="orderbook-pairs" role="table" aria-label="双边订单簿">
+        {Array.from({ length: rowCount }, (_, index) => <PairedDepthRow key={index} bid={bids[index]} ask={asks[index]} maxSize={maxSize} priceDecimals={pair.priceDecimals} />)}
+      </div>
       <div className="orderbook-foot"><span>公开市场深度</span><span className="mono">SEQ {snapshot.sequenceId ?? "—"}</span></div>
     </div> : <div className="orderbook-empty" role="status">正在连接实时深度…</div>}
   </section>;

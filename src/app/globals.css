@@ -41,6 +41,7 @@
   .paper-badge i { @apply size-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)]; }
   .icon-button { @apply grid size-[38px] cursor-pointer place-items-center rounded-full border-0 bg-transparent text-muted hover:bg-surface-high hover:text-foreground; }
   .icon-button svg { @apply size-[21px]; }
+  .icon-button:focus-visible, .trade-action:focus-visible, .order-submit:focus-visible { @apply outline-2 outline-offset-2 outline-primary; }
   .row { @apply flex items-center; }
   .between { @apply justify-between; }
   .gap-10 { @apply gap-2.5; }
@@ -120,6 +121,7 @@
   .empty svg { @apply size-8; }
 
   .instrument-header { @apply -mx-1 flex min-h-[68px] items-center justify-between gap-2; }
+  .trade-screen { @apply pb-[66px]; }
   .instrument-heading { @apply flex min-w-0 items-center; }
   .instrument-heading > .icon-button { @apply -ml-2 shrink-0; }
   .instrument-title { @apply min-w-0; }
@@ -226,7 +228,6 @@
   .market-error svg { @apply size-4 shrink-0 text-warning; }
   .market-error span { @apply flex-1; }
   .market-error button { @apply shrink-0 rounded-md border border-warning/30 bg-transparent px-2 py-1 text-[9px] font-bold text-warning; }
-  .order-entry-card { @apply bg-surface-raised p-3.5; }
   .order-ticket-heading, .orderbook-heading { @apply flex items-start justify-between; }
   .order-ticket-heading h2, .orderbook-heading h2 { @apply mt-1 mb-0 text-[16px] tracking-[-0.025em]; }
   .trade-kicker { @apply font-mono text-[7px] font-bold tracking-[0.14em] text-primary; }
@@ -244,9 +245,27 @@
   .order-summary span { @apply flex justify-between; }
   .order-summary b { @apply text-foreground; }
   .trade-actions { @apply grid grid-cols-2 gap-2; }
-  .trade-action { @apply flex min-h-11 items-center justify-center rounded-[10px] text-[12px] font-extrabold; }
+  .trade-action { @apply flex min-h-11 cursor-pointer items-center justify-center rounded-[10px] border-0 text-[12px] font-extrabold; }
   .trade-action.buy { @apply bg-paper text-[#04120b] shadow-[0_8px_24px_#02c0761f]; }
   .trade-action.sell { @apply bg-danger text-[#180307] shadow-[0_8px_24px_#f8496017]; }
+  .trade-action-dock { @apply fixed inset-x-0 bottom-[82px] z-30 mx-auto grid h-[66px] max-w-[430px] grid-cols-2 gap-2 border-t border-line bg-[#101417f5] px-3 py-2.5 backdrop-blur-xl min-[700px]:bottom-[110px]; }
+  .trade-action-dock .trade-action { @apply min-h-[46px]; }
+  .order-sheet-layer { @apply fixed inset-0 z-50 flex items-end justify-center bg-black/65 backdrop-blur-[2px]; }
+  .order-sheet { @apply relative max-h-[calc(100dvh-36px)] w-full max-w-[430px] overflow-y-auto rounded-t-[22px] border border-b-0 border-line bg-surface-raised px-4 pt-2.5 pb-[max(18px,env(safe-area-inset-bottom))] shadow-[0_-24px_80px_#00000080] min-[700px]:mb-7 min-[700px]:rounded-b-[22px] min-[700px]:border-b; }
+  .order-sheet-handle { @apply mx-auto mb-2.5 h-1 w-10 rounded-full bg-[#434c47]; }
+  .order-sheet .order-ticket-heading { @apply items-center; }
+  .order-sheet .order-ticket-heading h2 { @apply text-[18px]; }
+  .order-sheet-actions { @apply flex items-center gap-1.5; }
+  .order-sheet-actions .icon-button { @apply size-9; }
+  .order-sheet-actions .icon-button svg { @apply size-[18px]; }
+  .order-sheet .order-type { @apply mt-2.5 mb-2.5; }
+  .order-sheet .field { @apply mt-2.5; }
+  .order-sheet .order-summary { @apply my-3 grid-cols-2 gap-3; }
+  .order-sheet .order-summary span { @apply flex-col gap-1; }
+  .order-sheet .order-summary span:last-child { @apply items-end; }
+  .order-submit { @apply flex min-h-12 w-full items-center justify-center rounded-[11px] text-[13px] font-extrabold; }
+  .order-submit.buy { @apply bg-paper text-[#04120b] shadow-[0_8px_24px_#02c0761f]; }
+  .order-submit.sell { @apply bg-danger text-[#180307] shadow-[0_8px_24px_#f8496017]; }
   .primary-button, .secondary-button { @apply flex min-h-[50px] w-full cursor-pointer items-center justify-center gap-2 rounded-[11px] border-0 font-extrabold; }
   .primary-button { @apply bg-paper text-[#04120b] shadow-[0_8px_24px_#02c0761f]; }
   .danger-button { @apply bg-danger text-[#180307]; }
@@ -259,23 +278,30 @@
   .orderbook-heading { @apply border-b border-line px-3.5 py-3; }
   .orderbook-status { @apply flex flex-col items-end gap-1; }
   .orderbook-status small { @apply font-mono text-[7px] text-muted; }
-  .orderbook { @apply px-3.5 py-2; }
-  .orderbook-grid { @apply grid grid-cols-3 items-center text-right font-mono text-[9px]; }
-  .orderbook-grid > :first-child { @apply text-left; }
-  .orderbook-head { @apply min-h-7 font-sans text-[8px] text-muted; }
-  .orderbook-row { @apply relative min-h-7 border-t border-[#23292d]; }
-  .orderbook-row::before { content: ""; width: var(--depth); @apply pointer-events-none absolute inset-y-0 right-0 opacity-100; }
-  .orderbook-row.sell::before { @apply bg-danger/[0.055]; }
-  .orderbook-row.buy::before { @apply bg-primary/[0.055]; }
-  .orderbook-row > * { @apply relative z-10; }
-  .orderbook-row.sell b { @apply text-danger; }
-  .orderbook-row.buy b { @apply text-primary; }
-  .orderbook-row span { @apply text-[#b7c0bb]; }
-  .orderbook-mid { @apply my-1.5 flex items-center justify-between border-y border-line py-2; }
-  .orderbook-mid > div { @apply flex flex-col gap-0.5 last:items-end; }
-  .orderbook-mid strong { @apply text-[15px] text-primary; }
-  .orderbook-mid span { @apply text-[7px] text-muted; }
-  .orderbook-mid b { @apply text-[9px] text-foreground; }
+  .orderbook { @apply px-3.5 py-2.5; }
+  .book-balance { @apply grid grid-cols-[auto_1fr_auto] items-center gap-2 border-b border-line pb-2.5 font-mono text-[9px]; }
+  .book-balance > b:first-child { @apply text-primary; }
+  .book-balance > b:last-child { @apply text-danger; }
+  .book-balance > div { @apply relative h-1 overflow-hidden rounded-full bg-danger; }
+  .book-balance i { @apply absolute inset-y-0 left-0 block bg-primary; }
+  .orderbook-spread { @apply flex min-h-9 items-center justify-between border-b border-line text-[8px] text-muted; }
+  .orderbook-spread span { @apply flex items-baseline gap-1.5; }
+  .orderbook-spread strong { @apply text-[13px] text-foreground; }
+  .orderbook-spread b { @apply text-[9px] text-foreground; }
+  .orderbook-pair-head, .orderbook-pair-row { @apply grid grid-cols-[.8fr_1.15fr_1.15fr_.8fr] items-center gap-1 font-mono; }
+  .orderbook-pair-head { @apply min-h-7 text-[8px] text-muted; }
+  .orderbook-pair-head > :nth-child(2), .orderbook-pair-head > :nth-child(3) { @apply text-right; }
+  .orderbook-pair-head > :last-child { @apply text-right; }
+  .orderbook-pair-row { @apply relative min-h-7 border-t border-[#23292d] text-[9px]; }
+  .orderbook-pair-row::before, .orderbook-pair-row::after { content: ""; @apply pointer-events-none absolute inset-y-0; }
+  .orderbook-pair-row::before { width: var(--bid-depth); @apply left-0 bg-primary/[0.06]; }
+  .orderbook-pair-row::after { width: var(--ask-depth); @apply right-0 bg-danger/[0.06]; }
+  .orderbook-pair-row > * { @apply relative z-10; }
+  .book-size { @apply truncate text-[#aab4ae]; }
+  .book-price { @apply truncate text-right font-semibold; }
+  .bid-price { @apply text-primary; }
+  .ask-price { @apply text-danger; }
+  .ask-size { @apply text-right; }
   .orderbook-foot { @apply mt-1.5 flex items-center justify-between border-t border-line pt-2 text-[7px] text-muted; }
   .orderbook-empty { @apply grid min-h-[132px] place-items-center px-4 text-center text-[10px] text-muted; }
 

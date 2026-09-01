@@ -27,7 +27,7 @@ const candles = [
 afterEach(() => vi.unstubAllGlobals());
 
 describe("TradeScreen live market integration", () => {
-  it("offers independent buy and sell confirmation links from the order ticket", async () => {
+  it("opens a side-specific paper order sheet and returns focus when dismissed", async () => {
     vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => Promise.resolve(Response.json({
       source: "okx",
       data: String(input).includes("/ticker") ? ticker : candles,
@@ -35,16 +35,26 @@ describe("TradeScreen live market integration", () => {
 
     render(<TradeScreen pair={tradingPairs[1]} />);
 
-    expect(await screen.findByDisplayValue("70000.00")).toBeInTheDocument();
+    const buyTrigger = await screen.findByRole("button", { name: "买入 ETH" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    fireEvent.click(buyTrigger);
 
-    const buyUrl = new URL(screen.getByRole("link", { name: "买入 ETH" }).getAttribute("href")!, "http://app.local");
-    const sellUrl = new URL(screen.getByRole("link", { name: "卖出 ETH" }).getAttribute("href")!, "http://app.local");
+    expect(screen.getByRole("dialog", { name: "买入 ETH" })).toBeInTheDocument();
+    expect(screen.getByDisplayValue("70000.00")).toBeInTheDocument();
+    const buyUrl = new URL(screen.getByRole("link", { name: "确认买入 ETH" }).getAttribute("href")!, "http://app.local");
     expect(buyUrl.pathname).toBe("/trade/eth-usdt/confirm");
     expect(buyUrl.searchParams.get("side")).toBe("buy");
-    expect(sellUrl.pathname).toBe("/trade/eth-usdt/confirm");
-    expect(sellUrl.searchParams.get("side")).toBe("sell");
     expect(screen.getByRole("button", { name: "限价" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "市价" })).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(buyTrigger).toHaveFocus();
+
+    fireEvent.click(screen.getByRole("button", { name: "卖出 ETH" }));
+    const sellUrl = new URL(screen.getByRole("link", { name: "确认卖出 ETH" }).getAttribute("href")!, "http://app.local");
+    expect(sellUrl.pathname).toBe("/trade/eth-usdt/confirm");
+    expect(sellUrl.searchParams.get("side")).toBe("sell");
     expect(screen.getByLabelText("ETH-USDT 实时深度")).toBeInTheDocument();
   });
 
@@ -59,7 +69,7 @@ describe("TradeScreen live market integration", () => {
 
     render(<TradeScreen pair={tradingPairs[1]} />);
 
-    expect(await screen.findByDisplayValue("70000.00")).toBeInTheDocument();
+    expect(await screen.findByText("70,000.00")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "ETH/USDT" })).toBeInTheDocument();
     expect(screen.getByText("现货")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /AI 信号/ })).not.toBeInTheDocument();
@@ -67,9 +77,9 @@ describe("TradeScreen live market integration", () => {
     expect(screen.queryByRole("button", { name: "更多行情选项" })).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "行情" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tabpanel", { name: "行情" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "买入 ETH" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "买入 ETH" })).toBeInTheDocument();
     expect(screen.getAllByText("PAPER LIVE").length).toBeGreaterThan(0);
-    expect(screen.getByText("模拟撮合环境，不会请求钱包交易签名或扣除真实资产")).toBeInTheDocument();
+    expect(screen.queryByText("模拟撮合环境，不会请求钱包交易签名或扣除真实资产")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "1D" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryByRole("button", { name: "EMA" })).not.toBeInTheDocument();
 
@@ -96,7 +106,7 @@ describe("TradeScreen live market integration", () => {
     expect(await screen.findByText("交易规则")).toBeInTheDocument();
     expect(screen.getByText("0.0001 ETH")).toBeInTheDocument();
     expect(screen.getByText("0.01 USDT")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "买入 ETH" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "买入 ETH" })).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "信息" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tabpanel", { name: "信息" })).toBeInTheDocument();
   });
