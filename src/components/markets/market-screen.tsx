@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowRight, Clock, MagnifyingGlass, SlidersHorizontal, WarningCircle } from "@phosphor-icons/react";
+import { ArrowRight, Clock, MagnifyingGlass, SlidersHorizontal, WarningCircle, X } from "@phosphor-icons/react";
 import Link from "next/link";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { AssetMark, Change, FavoriteMarketCard, PaperBadge } from "@/components/ui";
@@ -29,6 +29,10 @@ export function MarketScreen() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
   const [mode, setMode] = useState<"spot" | "gainers">("spot");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchTriggerRef = useRef<HTMLButtonElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const restoreSearchFocus = useRef(false);
   const overview = useMarketOverview();
   const search = useMarketSearch(query);
   const visible = useMemo(
@@ -40,13 +44,46 @@ export function MarketScreen() {
     [overview.markets, query, category, mode],
   );
 
+  const closeSearch = () => {
+    setQuery("");
+    restoreSearchFocus.current = true;
+    setIsSearchOpen(false);
+  };
+
+  useEffect(() => {
+    if (isSearchOpen) {
+      searchInputRef.current?.focus();
+    } else if (restoreSearchFocus.current) {
+      restoreSearchFocus.current = false;
+      searchTriggerRef.current?.focus();
+    }
+  }, [isSearchOpen]);
+
+  useEffect(() => {
+    if (!isSearchOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeSearch();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isSearchOpen]);
+
   return <AppShell>
-    <header className="market-page-header">
-      <div className="market-heading">
-        <div className="brand-mark">A</div>
-        <div><span className="market-kicker">APEX LEDGER</span><h1>行情概览</h1></div>
-      </div>
-      <div className="market-header-actions"><PaperBadge /></div>
+    <header className={`market-page-header ${isSearchOpen ? "search-open" : ""}`}>
+      {isSearchOpen ? <label className="market-search-expanded">
+        <MagnifyingGlass aria-hidden="true" />
+        <input ref={searchInputRef} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索资产或交易对" />
+        <button type="button" aria-label="关闭搜索" onClick={closeSearch}><X /></button>
+      </label> : <>
+        <div className="market-heading">
+          <div className="brand-mark">A</div>
+          <div><span className="market-kicker">APEX LEDGER</span><h1>行情概览</h1></div>
+        </div>
+        <div className="market-header-actions">
+          <button ref={searchTriggerRef} type="button" className="icon-button market-search-trigger" aria-label="搜索市场" onClick={() => setIsSearchOpen(true)}><MagnifyingGlass /></button>
+          <PaperBadge />
+        </div>
+      </>}
     </header>
 
     <nav className="market-mode-tabs" aria-label="行情分类" role="tablist">
@@ -69,8 +106,6 @@ export function MarketScreen() {
           : "行情刷新失败，继续展示上一次取得的实时数据。"}</span>
         <button type="button" aria-label="重试市场行情" onClick={overview.retry}>重试</button>
       </div>}
-
-      <label className="search"><MagnifyingGlass /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索资产或交易对" /></label>
 
       {search.isActive ? <MarketSearchResults query={query} search={search} /> : <><section>
         <div className="section-title"><h3>市场动向</h3><span className="muted">24H · USDT</span></div>

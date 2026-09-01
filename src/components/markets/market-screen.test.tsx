@@ -50,6 +50,22 @@ describe("MarketScreen", () => {
     expect(screen.queryByRole("button", { name: "行情提醒" })).not.toBeInTheDocument();
   });
 
+  it("expands market search from the header and restores focus when it closes", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => liveResponse()));
+    render(<MarketScreen />);
+    await screen.findByText("实时行情");
+
+    const trigger = screen.getByRole("button", { name: "搜索市场" });
+    expect(screen.queryByPlaceholderText("搜索资产或交易对")).not.toBeInTheDocument();
+
+    fireEvent.click(trigger);
+    expect(screen.getByPlaceholderText("搜索资产或交易对")).toHaveFocus();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByPlaceholderText("搜索资产或交易对")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "搜索市场" })).toHaveFocus();
+  });
+
   it("renders a compact mover rail and eight provider-neutral assets with supported trading routes", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => liveResponse()));
     render(<MarketScreen />);
@@ -71,6 +87,7 @@ describe("MarketScreen", () => {
     render(<MarketScreen />);
     await screen.findByText("实时行情");
 
+    fireEvent.click(screen.getByRole("button", { name: "搜索市场" }));
     fireEvent.change(screen.getByPlaceholderText("搜索资产或交易对"), { target: { value: "p" } });
     expect(screen.getByTestId("market-row-POL")).toBeInTheDocument();
     expect(screen.queryByTestId("market-row-BTC")).not.toBeInTheDocument();
@@ -106,6 +123,7 @@ describe("MarketScreen", () => {
     render(<MarketScreen />);
     await act(async () => { await Promise.resolve(); });
 
+    fireEvent.click(screen.getByRole("button", { name: "搜索市场" }));
     fireEvent.change(screen.getByPlaceholderText("搜索资产或交易对"), { target: { value: "doge" } });
     expect(fetcher.mock.calls.some(([url]) => String(url).startsWith("/api/market/search"))).toBe(false);
 

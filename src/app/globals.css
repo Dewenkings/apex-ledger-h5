@@ -61,6 +61,13 @@
   .market-kicker { @apply mb-1 block font-mono text-[8px] font-bold tracking-[0.14em] text-primary; }
   .market-header-actions { @apply flex shrink-0 items-center gap-0.5; }
   .market-header-actions .icon-button { @apply size-9; }
+  .market-search-trigger { @apply text-muted transition-colors hover:text-primary; }
+  .market-page-header.search-open { @apply w-full; }
+  .market-search-expanded { @apply flex h-10 w-full items-center gap-2 rounded-[10px] border border-primary/45 bg-surface-raised px-3 shadow-[0_0_0_3px_#44e0920a,inset_0_1px_0_#ffffff05]; }
+  .market-search-expanded > svg { @apply size-[18px] shrink-0 text-primary; }
+  .market-search-expanded input { @apply h-full min-w-0 flex-1 border-0 bg-transparent text-[12px] text-foreground outline-none placeholder:text-[#66716b]; }
+  .market-search-expanded button { @apply grid size-8 shrink-0 cursor-pointer place-items-center rounded-lg border-0 bg-transparent text-muted hover:bg-surface hover:text-foreground; }
+  .market-search-expanded button svg { @apply size-4; }
   .market-mode-tabs { @apply -mx-4 mb-3 flex h-11 items-end gap-6 overflow-x-auto border-b border-line px-4; scrollbar-width: none; }
   .market-mode-tabs button { @apply relative h-11 shrink-0 border-0 bg-transparent px-0 text-[13px] font-bold text-muted; }
   .market-mode-tabs button.active { @apply text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary; }
@@ -121,7 +128,7 @@
   .empty svg { @apply size-8; }
 
   .instrument-header { @apply -mx-1 flex min-h-[68px] items-center justify-between gap-2; }
-  .trade-screen { @apply pb-[66px]; }
+  .trade-screen { @apply pb-[58px]; }
   .instrument-heading { @apply flex min-w-0 items-center; }
   .instrument-heading > .icon-button { @apply -ml-2 shrink-0; }
   .instrument-title { @apply min-w-0; }
@@ -245,25 +252,33 @@
   .order-summary span { @apply flex justify-between; }
   .order-summary b { @apply text-foreground; }
   .trade-actions { @apply grid grid-cols-2 gap-2; }
-  .trade-action { @apply flex min-h-11 cursor-pointer items-center justify-center rounded-[10px] border-0 text-[12px] font-extrabold; }
-  .trade-action.buy { @apply bg-paper text-[#04120b] shadow-[0_8px_24px_#02c0761f]; }
-  .trade-action.sell { @apply bg-danger text-[#180307] shadow-[0_8px_24px_#f8496017]; }
-  .trade-action-dock { @apply fixed inset-x-0 bottom-[82px] z-30 mx-auto grid h-[66px] max-w-[430px] grid-cols-2 gap-2 border-t border-line bg-[#101417f5] px-3 py-2.5 backdrop-blur-xl min-[700px]:bottom-[110px]; }
-  .trade-action-dock .trade-action { @apply min-h-[46px]; }
+  .trade-action { @apply flex min-h-11 cursor-pointer items-center justify-center rounded-[8px] border-0 text-[11px] font-extrabold tracking-[0.01em]; }
+  .trade-action.buy { @apply bg-paper text-[#04120b] shadow-[0_5px_16px_#02c07614]; }
+  .trade-action.sell { @apply bg-danger text-[#180307] shadow-[0_5px_16px_#f8496012]; }
+  .trade-action-dock { @apply fixed inset-x-3 bottom-[82px] z-30 mx-auto grid h-[58px] max-w-[406px] grid-cols-2 gap-2 rounded-t-[12px] border border-b-0 border-line bg-[#101417f2] px-2 py-[7px] backdrop-blur-xl min-[700px]:bottom-[110px]; }
+  .trade-action-dock .trade-action { @apply min-h-11; }
   .order-sheet-layer { @apply fixed inset-0 z-50 flex items-end justify-center bg-black/65 backdrop-blur-[2px]; }
-  .order-sheet { @apply relative max-h-[calc(100dvh-36px)] w-full max-w-[430px] overflow-y-auto rounded-t-[22px] border border-b-0 border-line bg-surface-raised px-4 pt-2.5 pb-[max(18px,env(safe-area-inset-bottom))] shadow-[0_-24px_80px_#00000080] min-[700px]:mb-7 min-[700px]:rounded-b-[22px] min-[700px]:border-b; }
-  .order-sheet-handle { @apply mx-auto mb-2.5 h-1 w-10 rounded-full bg-[#434c47]; }
+  .order-sheet { @apply relative max-h-[calc(100dvh-24px)] w-full max-w-[430px] overflow-y-auto rounded-t-[18px] border border-b-0 border-line bg-surface-raised px-3.5 pt-2 pb-[max(14px,env(safe-area-inset-bottom))] shadow-[0_-18px_56px_#00000078] min-[700px]:mb-7 min-[700px]:rounded-b-[18px] min-[700px]:border-b; }
+  .order-sheet-handle { @apply mx-auto mb-1.5 h-[3px] w-9 rounded-full bg-[#434c47]; }
   .order-sheet .order-ticket-heading { @apply items-center; }
-  .order-sheet .order-ticket-heading h2 { @apply text-[18px]; }
+  .order-sheet .order-ticket-heading h2 { @apply mt-0.5 text-[16px]; }
+  .order-sheet .trade-kicker { @apply text-[6px]; }
   .order-sheet-actions { @apply flex items-center gap-1.5; }
-  .order-sheet-actions .icon-button { @apply size-9; }
-  .order-sheet-actions .icon-button svg { @apply size-[18px]; }
-  .order-sheet .order-type { @apply mt-2.5 mb-2.5; }
-  .order-sheet .field { @apply mt-2.5; }
-  .order-sheet .order-summary { @apply my-3 grid-cols-2 gap-3; }
+  .order-sheet-actions .market-source { @apply px-2 py-1 text-[7px]; }
+  .order-sheet-actions .icon-button { @apply size-8; }
+  .order-sheet-actions .icon-button svg { @apply size-4; }
+  .order-sheet .order-type { @apply mt-2 mb-2; }
+  .order-sheet .order-type button { @apply py-2 text-[10px]; }
+  .order-sheet .field { @apply mt-2; }
+  .order-sheet .field > span { @apply mb-1 text-[8px]; }
+  .order-sheet .field input { @apply h-10 px-2.5 text-[11px]; }
+  .order-sheet .field b { @apply px-2.5 text-[8px]; }
+  .order-sheet .percent-row { @apply mt-2 gap-1; }
+  .order-sheet .percent-row button { @apply min-h-7 py-0.5 text-[8px]; }
+  .order-sheet .order-summary { @apply my-2.5 grid-cols-2 gap-3 pt-2.5 text-[9px]; }
   .order-sheet .order-summary span { @apply flex-col gap-1; }
   .order-sheet .order-summary span:last-child { @apply items-end; }
-  .order-submit { @apply flex min-h-12 w-full items-center justify-center rounded-[11px] text-[13px] font-extrabold; }
+  .order-submit { @apply flex min-h-11 w-full items-center justify-center rounded-[9px] text-[12px] font-extrabold; }
   .order-submit.buy { @apply bg-paper text-[#04120b] shadow-[0_8px_24px_#02c0761f]; }
   .order-submit.sell { @apply bg-danger text-[#180307] shadow-[0_8px_24px_#f8496017]; }
   .primary-button, .secondary-button { @apply flex min-h-[50px] w-full cursor-pointer items-center justify-center gap-2 rounded-[11px] border-0 font-extrabold; }
@@ -271,8 +286,8 @@
   .danger-button { @apply bg-danger text-[#180307]; }
   .secondary-button { @apply mt-[9px] border border-line bg-surface-raised text-foreground; }
   .primary-button svg { @apply w-[18px]; }
-  .safety-note { @apply mx-0.5 mt-2.5 mb-0 flex items-start gap-[7px] text-[9px] leading-normal text-muted; }
-  .safety-note svg { @apply w-4 shrink-0 text-primary; }
+  .safety-note { @apply mx-0.5 mt-2 mb-0 flex items-start gap-1.5 text-[8px] leading-normal text-muted; }
+  .safety-note svg { @apply w-3.5 shrink-0 text-primary; }
   .market-data-disclosure { @apply mx-2 my-4 text-center text-[8px] leading-relaxed text-muted; }
   .orderbook-card { @apply mt-3 overflow-hidden rounded-[13px] border border-line bg-surface-raised; }
   .orderbook-heading { @apply border-b border-line px-3.5 py-3; }
@@ -338,22 +353,52 @@
   .receipt span { @apply flex justify-between text-[11px] text-muted; }
   .receipt b { @apply text-foreground; }
 
-  .page-actions { @apply mt-1 mb-[18px] flex items-center gap-2; }
-  .tabs { @apply grid flex-1 grid-cols-3 gap-1 rounded-[11px] bg-surface-raised p-1; }
-  .tabs button { @apply rounded-lg border-0 bg-transparent px-[5px] py-[9px] text-[10px] text-muted; }
-  .tabs button.active { @apply bg-surface-high font-bold text-foreground; }
+  .orders-environment { @apply mb-3 flex items-center justify-between border-y border-line py-2.5 text-[8px] tracking-[0.04em] text-muted; }
+  .orders-environment span { @apply flex items-center gap-1.5 font-bold text-primary; }
+  .orders-environment span i { @apply size-1.5 rounded-full bg-primary shadow-[0_0_10px_#44e092]; }
+  .orders-environment b { @apply font-mono text-[7px] font-medium tracking-[0.08em] text-[#748078]; }
+  .page-actions { @apply mt-0 mb-3 flex items-center; }
+  .tabs { @apply grid w-full grid-cols-3 gap-1 rounded-[11px] border border-line bg-surface-raised p-1; }
+  .tabs button { @apply min-h-9 rounded-lg border-0 bg-transparent px-[5px] py-2 text-[10px] text-muted transition-colors; }
+  .tabs button.active { @apply bg-surface-high font-bold text-foreground shadow-[inset_0_-2px_0_#44e092]; }
+  .tabs button:focus-visible { @apply outline-2 outline-offset-2 outline-primary; }
   .orders-stack { @apply grid gap-2.5; }
-  .order-card { @apply rounded-card border border-line bg-surface p-[15px]; }
-  .order-card .muted { @apply text-[10px]; }
-  .side-tag { @apply rounded-[5px] px-1.5 py-[5px] font-mono text-[9px] font-extrabold; }
-  .side-tag.buy { @apply bg-primary/[0.07] text-primary; }
-  .side-tag.sell { @apply bg-danger/[0.07] text-danger; }
-  .status { @apply rounded-full bg-surface-high px-[7px] py-[5px] font-mono text-[9px] font-bold text-muted; }
-  .status.open { @apply text-warning; }
-  .status.filled { @apply text-primary; }
-  .order-grid { @apply mt-[17px] grid grid-cols-[1fr_1.2fr_1fr] gap-[7px]; }
-  .order-grid span { @apply grid gap-[5px]; }
-  .order-grid b { @apply text-[10px]; }
+  .order-card { @apply relative overflow-hidden rounded-[15px] border border-line bg-surface px-3.5 py-3; }
+  .order-card::before { content: ""; @apply absolute inset-y-0 left-0 w-0.5 bg-primary; }
+  .order-card-sell::before { @apply bg-danger; }
+  .order-card-head { @apply flex items-start justify-between gap-3; }
+  .order-card-head > div { @apply flex min-w-0 items-baseline gap-2; }
+  .order-card-head strong { @apply text-[14px] leading-none; }
+  .order-card-head > div span { @apply text-[9px] font-bold text-primary; }
+  .order-card-sell .order-card-head > div span { @apply text-danger; }
+  .status { @apply shrink-0 rounded-full border border-line bg-surface-high px-2 py-1 font-mono text-[8px] font-bold text-muted; }
+  .status.live, .status.partially_filled, .status.filled { @apply border-primary/20 bg-primary/[0.06] text-primary; }
+  .status.canceled { @apply text-muted; }
+  .order-metrics { @apply my-3 grid grid-cols-2 gap-3; }
+  .order-metrics > div { @apply min-w-0 rounded-[10px] border border-line/80 bg-base/45 px-2.5 py-2; }
+  .order-metrics dt { @apply mb-1 text-[8px] font-medium text-muted; }
+  .order-metrics dd { @apply m-0 truncate text-[13px] font-bold text-foreground; }
+  .order-metrics small { @apply text-[8px] font-medium text-muted; }
+  .order-progress { @apply flex items-center justify-between border-b border-line pb-2.5 text-[8px] text-muted; }
+  .order-progress b { @apply text-[9px] text-foreground; }
+  .order-sync { @apply mt-2 flex items-center gap-1.5 text-[8px] font-bold text-primary; }
+  .order-sync i { @apply size-1.5 animate-pulse rounded-full bg-primary; }
+  .order-sync.stale { @apply justify-between text-warning; }
+  .order-sync button { @apply border-0 bg-transparent text-[8px] font-bold text-warning; }
+  .order-card-foot { @apply mt-2.5 grid grid-cols-[minmax(0,1fr)_auto_auto] items-end gap-2; }
+  .order-card-foot > div { @apply min-w-0; }
+  .order-card-foot span { @apply mb-0.5 block text-[7px] text-muted; }
+  .order-card-foot b { @apply block truncate text-[8px] font-medium text-[#9aa69f]; }
+  .order-card-foot time { @apply pb-1 text-[7px] text-muted; }
+  .cancel-order-button { @apply min-h-7 rounded-lg border border-danger/25 bg-danger/[0.04] px-3 text-[8px] font-bold text-danger transition-colors; }
+  .cancel-order-button:active { @apply bg-danger/15; }
+  .cancel-order-button:focus-visible { @apply outline-2 outline-offset-2 outline-danger; }
+  .orders-disclosure { @apply mt-3 rounded-xl border border-line bg-surface px-3 py-2.5; }
+  .orders-disclosure summary { @apply flex cursor-pointer list-none items-center gap-2 text-[9px] font-bold text-foreground; }
+  .orders-disclosure summary::-webkit-details-marker { display: none; }
+  .orders-disclosure summary svg { @apply size-4 text-primary; }
+  .orders-disclosure summary span { @apply ml-auto font-normal text-muted; }
+  .orders-disclosure p { @apply mt-2 border-t border-line pt-2 text-[8px] leading-relaxed text-muted; }
   .text-button { @apply border-0 bg-transparent pt-3 text-[10px] font-bold; }
   .info-panel, .siwe-note { @apply mt-[18px] flex gap-3 rounded-xl border border-line bg-surface p-3.5; }
   .info-panel svg, .siwe-note svg { @apply w-[22px] shrink-0 text-primary; }

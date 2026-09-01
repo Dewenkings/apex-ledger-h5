@@ -27,6 +27,25 @@ function fetcher(input: RequestInfo | URL, init?: RequestInit): Promise<Response
 afterEach(() => vi.unstubAllGlobals());
 
 describe("OKX Demo account screens", () => {
+  it("presents localized compact order information without unfinished controls", async () => {
+    vi.stubGlobal("fetch", vi.fn(fetcher));
+    render(<OrdersScreen />);
+
+    expect(await screen.findByText("271828")).toBeInTheDocument();
+    expect(screen.getByText("PAPER ORDER CENTER")).toBeInTheDocument();
+    expect(screen.getByText("执行环境 · OKX Demo Trading")).toBeInTheDocument();
+    expect(screen.getByRole("tablist", { name: "订单视图" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "当前委托" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("限价买入")).toBeInTheDocument();
+    expect(screen.getByText("挂单中")).toBeInTheDocument();
+    expect(screen.getByText("委托价")).toBeInTheDocument();
+    expect(screen.getByText("委托量")).toBeInTheDocument();
+    expect(screen.getByText("已成交")).toBeInTheDocument();
+    expect(screen.getByText("0 / 0.02 ETH")).toBeInTheDocument();
+    expect(screen.getByText("交易所订单号")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "导出" })).not.toBeInTheDocument();
+  });
+
   it("renders only the session API orders/fills and can request an owned cancel", async () => {
     const mockFetch = vi.fn(fetcher);
     vi.stubGlobal("fetch", mockFetch);
@@ -38,7 +57,7 @@ describe("OKX Demo account screens", () => {
     expect(await screen.findByText("撤单请求已发送")).toBeInTheDocument();
     expect(mockFetch).toHaveBeenCalledWith("/api/demo/orders/271828/cancel", expect.objectContaining({ method: "POST" }));
 
-    fireEvent.click(screen.getByRole("button", { name: "成交记录" }));
+    fireEvent.click(screen.getByRole("tab", { name: "成交记录" }));
     expect(await screen.findByText("314")).toBeInTheDocument();
   });
 
@@ -73,8 +92,8 @@ describe("OKX Demo account screens", () => {
 
     render(<OrdersScreen />);
 
-    expect(await screen.findByText("正在同步 OKX")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "历史订单" }));
+    expect(await screen.findByText("正在同步交易所状态")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "历史订单" }));
     expect(screen.getByText(/上次同步于/)).toBeInTheDocument();
     expect(screen.getByText("当前访客工作区")).toBeInTheDocument();
   });
