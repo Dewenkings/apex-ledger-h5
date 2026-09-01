@@ -30,6 +30,19 @@ function liveResponse() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("MarketScreen", () => {
+  it("uses one compact page heading and exposes the selected market category", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => liveResponse()));
+    render(<MarketScreen />);
+
+    await screen.findByText("OKX LIVE");
+
+    expect(screen.getByRole("heading", { level: 1, name: "行情概览" })).toBeInTheDocument();
+    expect(screen.queryByText("全球加密市场")).not.toBeInTheDocument();
+    expect(screen.queryByText("发现你的下一个机会")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Layer 1" })).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("renders eight source-labelled live assets and links BTC, ETH and SOL trading routes", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => liveResponse()));
     render(<MarketScreen />);

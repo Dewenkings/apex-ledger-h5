@@ -5,8 +5,7 @@ import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
-import { BrandHeader } from "@/components/layout/brand-header";
-import { AssetMark, Change, FavoriteMarketCard, Sparkline } from "@/components/ui";
+import { AssetMark, Change, FavoriteMarketCard, PaperBadge } from "@/components/ui";
 import { filterMarkets } from "@/lib/trading";
 import { getPairBySymbol } from "@/lib/trading/pairs";
 import { useMarketOverview, type OverviewDisplaySource, type OverviewMarket } from "./use-market-overview";
@@ -46,11 +45,13 @@ export function MarketScreen() {
   );
 
   return <AppShell>
-    <BrandHeader title="行情概览" subtitle="MARKET OVERVIEW" />
-    <section className="hero-intro">
-      <div><span className="muted">全球加密市场</span><h2>发现你的下一个机会</h2></div>
-      <button className="icon-button" aria-label="行情提醒"><Bell /></button>
-    </section>
+    <header className="market-page-header">
+      <div className="market-heading">
+        <div className="brand-mark">A</div>
+        <div><span className="market-kicker">APEX LEDGER</span><h1>行情概览</h1></div>
+      </div>
+      <div className="market-header-actions"><PaperBadge /><button className="icon-button" aria-label="行情提醒"><Bell /></button></div>
+    </header>
 
     {overview.isInitialLoading ? <MarketOverviewLoading /> : <>
       <div className="overview-meta">
@@ -74,23 +75,20 @@ export function MarketScreen() {
       <section>
         <div className="section-title"><h3>自选市场</h3><span className="muted">24H · USDT</span></div>
         <div className="favorite-grid">{overview.markets.slice(0, 3).map((market) => <MarketDestination market={market} key={market.symbol}>
-          <div className="favorite-market-wrap">
-            <FavoriteMarketCard market={market} />
-            <span className={`row-source ${market.source === "demo" ? "demo" : ""}`}>{sourceShort(market.source)}</span>
-          </div>
+          <FavoriteMarketCard market={market} sourceLabel={sourceShort(market.source)} sourceDemo={market.source === "demo"} />
         </MarketDestination>)}</div>
       </section>
 
       <section>
         <div className="section-title"><h3>全部资产</h3><SlidersHorizontal className="muted" /></div>
-        <div className="chip-row">{["All", "Layer 1", "DeFi", "Payments"].map((item) => <button type="button" onClick={() => setCategory(item)} className={`chip ${category === item ? "active" : ""}`} key={item}>{item}</button>)}</div>
+        <div className="chip-row">{["All", "Layer 1", "DeFi", "Payments"].map((item) => <button type="button" aria-pressed={category === item} onClick={() => setCategory(item)} className={`chip ${category === item ? "active" : ""}`} key={item}>{item}</button>)}</div>
         <div className="market-list">
-          <div className="table-head"><span>资产</span><span>价格 / 24H</span></div>
+          <div className="table-head"><span>资产</span><span>价格</span><span>24H 涨跌</span></div>
           {visible.map((market) => <MarketDestination market={market} key={market.symbol}>
             <div className="market-row" data-testid={`market-row-${market.symbol}`}>
-              <div className="row gap-12"><AssetMark market={market} /><div><strong>{market.symbol}</strong><span className="muted block">{market.name} · USDT</span><small className={`row-source ${market.source === "demo" ? "demo" : ""}`}>{sourceShort(market.source)}</small></div></div>
-              <Sparkline points={market.spark} positive={market.change >= 0} />
-              <div className="market-price"><strong className="mono">${priceFormatter.format(market.price)}</strong><Change value={market.change} /></div>
+              <div className="row gap-12"><AssetMark market={market} /><div><div className="market-symbol-line"><strong>{market.symbol}</strong><small className={`row-source ${market.source === "demo" ? "demo" : ""}`}>{sourceShort(market.source)}</small></div><span className="muted block">{market.name} · USDT</span></div></div>
+              <strong className="market-price mono">${priceFormatter.format(market.price)}</strong>
+              <div className="market-change"><Change value={market.change} /></div>
             </div>
           </MarketDestination>)}
         </div>
