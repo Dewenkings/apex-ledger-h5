@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { Web3Provider } from "@/providers/web3-provider";
 import "./globals.css";
 
-export const metadata: Metadata = { title: "Apex Ledger — Paper Trading", description: "A mobile-first crypto paper-trading portfolio project." };
+export const metadata: Metadata = { title: "Apex Ledger — Paper Trading", description: "A mobile-first Web3 paper-trading platform with wallet identity and read-only on-chain assets." };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0b0e11" };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

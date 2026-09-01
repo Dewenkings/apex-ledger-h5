@@ -2,7 +2,9 @@
 
 ## 目标与边界
 
-这是求职面试作品，不是托管资金的真实交易所。页面可完整演示行情发现、交易参数填写、OKX Demo 订单确认、订单管理、双账本资产概览、钱包连接、SIWE 登录与设置；交易按钮不会请求链上签名或扣除真实资产。
+Apex Ledger 是一个面向市场观察、策略验证与交易流程演练的非托管模拟交易平台。系统使用真实公开行情和 OKX Demo Trading 复现订单生命周期，同时将钱包身份、链上只读资产与交易执行严格隔离。
+
+平台主动排除充值、提现、实盘接口和链上写操作，不提供托管或真实资金交易能力。采用 Demo Trading 是为了在不移动真实资产的前提下保留订单确认、冻结、成交、撤单和历史查询等完整流程，并为公共访问提供可控、可重复的沙箱环境。
 
 当前阶段没有 MCP 运行时依赖。市场数据适配器、Paper Engine、SIWE 会话和风险计算均先由项目自身实现。未来增加的 MCP Server 是本项目拥有的可选工具接口层，用于把既有能力提供给 LangGraph Agent，不参与前端首屏和核心交易链路。
 
@@ -10,9 +12,9 @@
 
 - **UI 层**：Next.js App Router 页面与共享 H5 壳层。Tailwind CSS v4 负责布局、响应式、组件状态与品牌主题令牌；只有图表裁剪、数据驱动颜色和复杂渐变保留少量原生 CSS。
 - **领域层**：市场过滤、订单估算、导航状态等纯函数，便于单元测试。
-- **数据适配层**：`OkxMarketAdapter` 已实现 BTC-USDT 公开 ticker 与 candles；Next.js Route Handlers 负责同源代理、参数校验、短缓存与错误清洗。后续 `TradingAdapter` 可在 Paper Engine、Testnet Engine 之间切换。
+- **数据适配层**：`OkxMarketAdapter` 实现现货 ticker、candles 与 instrument 查询，`KrakenMarketAdapter` 提供公开行情回退；Next.js Route Handlers 负责同源代理、参数校验、短缓存与错误清洗。
 - **身份层**：Reown AppKit + wagmi 管理连接，SIWE 负责离线消息登录，Redis Repository 保存一次性 nonce 与不透明 Session。钱包连接、SIWE 和 Demo 门禁严格分开。
-- **链上读取层**：wagmi `useBalance` 与 `useReadContracts(balanceOf)` 读取 Ethereum、Base、Arbitrum 的原生币及白名单稳定币；不包含写链能力。
+- **链上读取层**：wagmi `useBalance` 与 `useReadContracts(balanceOf)` 读取 Ethereum、Base、Arbitrum One、BNB Smart Chain 当前网络的原生币及白名单稳定币；不包含写链能力。
 
 ## 身份、授权与 owner 工作区
 
@@ -37,7 +39,7 @@ wallet owner:    eip155:account:{checksumAddress}
 | `OKX DEMO · VIRTUAL FUNDS` | OKX Demo 私有余额 API | 是，虚拟资金 | RPC 失败不影响 |
 | `ON-CHAIN · READ ONLY` | EVM 公共 RPC | 否 | Demo API 失败不影响 |
 
-两张卡片不计算合并总额。链上第一版仅支持 Ethereum、Base、Arbitrum 的原生 ETH 和 allowlist USDC/USDT；没有可信价格时 `usdValue` 保持 `null`，不伪造美元估值。任意 Token/NFT 扫描与主网交易属于后续独立需求。
+两张卡片不计算合并总额。链上读取支持 Ethereum、Base、Arbitrum One、BNB Smart Chain 的当前网络原生资产和 allowlist USDC/USDT；没有可信价格时 `usdValue` 保持 `null`，不伪造美元估值。任意 Token/NFT 扫描与链上交易属于后续独立需求。
 
 ## 前端目录边界
 
@@ -50,7 +52,7 @@ wallet owner:    eip155:account:{checksumAddress}
 
 架构测试禁止浏览器 feature 导入 `@upstash/redis` 或 `src/server`，并保证 layout 不依赖业务 feature。
 
-## 第一阶段双实时源行情实现
+## 双实时源行情与实时订单簿
 
 ```text
 TradeMarketPanel
@@ -62,6 +64,12 @@ TradeMarketPanel
         └── 2. KrakenMarketAdapter → api.kraken.com
             ↓（两个实时源均失败）
       明确标注的 Demo Data
+
+TradeScreen
+  └── OkxBooks5Client ── WebSocket ──> OKX books5
+            ├── 五档买卖盘归一化
+            ├── instrument 与 payload 校验
+            └── 断线重连与连接状态反馈
 ```
 
 市场首页通过额外的聚合边界复用相同适配器：
@@ -81,12 +89,14 @@ MarketScreen -> useMarketOverview -> GET /api/market/overview
 - `src/app/api/market/*`：浏览器同源 API，隐藏上游差异，并返回数据及真实来源标识。
 - `src/components/markets/use-market-overview.ts`：合并部分实时结果、逐行标注 Demo、保留最后一次成功快照并提供重试。
 - `src/components/markets/market-screen.tsx`：首页来源、更新时间、搜索、分类、加载和错误状态。
-- `src/components/trade/use-btc-market.ts`：请求取消、周期切换、重试及带标识的确定性回退数据。
+- `src/components/trade/use-trade-market.ts`：请求取消、周期切换、重试及带标识的确定性回退数据。
+- `src/lib/market-data/okx-books5-client.ts`：OKX `books5` WebSocket 订阅、消息校验、重连与生命周期管理。
+- `src/components/trade/use-live-order-book.ts`：把订单簿连接状态和实时快照接入交易 UI。
 - `src/components/trade/candlestick-chart.tsx`：Lightweight Charts 生命周期、缩放、拖动、十字线，以及由 ResizeObserver 驱动的宽高响应式尺寸。
 
-公开行情不需要 API Key。前端不直接访问交易所，避免把上游响应格式、地区域名和限流策略耦合进 UI。页面严格区分 `OKX LIVE`、`KRAKEN LIVE`、`MIXED LIVE` 与 `DEMO DATA`。当前 REST 方案优先保证面试演示的确定性；WebSocket 实时推送留到第二阶段。
+公开行情不需要 API Key。ticker 与 candles 通过同源 REST 适配层获得缓存、响应归一化和 Kraken 回退能力；订单簿通过 OKX `books5` WebSocket 获取低延迟快照。页面严格区分 `OKX LIVE`、`KRAKEN LIVE`、`MIXED LIVE` 与 `DEMO DATA`，并独立呈现订单簿连接状态。
 
-`/api/market/overview` 使用 30 秒共享缓存和 120 秒 stale-while-revalidate。服务端实时响应永不混入 fixture；缺失资产只在客户端目录合并阶段补入，并明确显示 `MIXED DATA`/`DEMO`。这让面试演示在上游局部故障时仍可用，同时不把静态数字伪装成实时行情。
+`/api/market/overview` 使用 30 秒共享缓存和 120 秒 stale-while-revalidate。服务端实时响应永不混入 fixture；缺失资产只在客户端目录合并阶段补入，并明确显示 `MIXED DATA`/`DEMO`。这使产品在弱网络或上游局部故障时保持可用，同时不把静态数字伪装成实时行情。
 
 ## 环境变量与部署
 
@@ -103,9 +113,9 @@ MarketScreen -> useMarketOverview -> GET /api/market/overview
 
 本地复制 `.env.example` 为 `.env.local`。Vercel 中分别为 Production/Preview 配置变量并重新部署；Reown Cloud allowlist 同时加入生产域名、Preview 需要验证的域名及 localhost。服务端 Secret 不得使用 `NEXT_PUBLIC_` 前缀。
 
-## 推荐后续资源
+## 后续演进
 
-- 行情：继续扩展 OKX public WebSocket、订单簿与多币种 ticker；保留适配器接口以支持备用数据源。
+- 行情：扩展订单簿深度、更多交易对与私有订单状态推送；保留适配器接口以支持备用数据源。
 - 钱包登录：继续补充智能合约钱包验签、跨设备 E2E 与 Session 管理 UI。
 - 服务端：Next Route Handlers 或 FastAPI；PostgreSQL + Prisma/SQLAlchemy。
 - AI/MCP：独立 Python LangGraph 服务；MCP Server 暴露 price、balance、gas、history、mock_trade 工具。

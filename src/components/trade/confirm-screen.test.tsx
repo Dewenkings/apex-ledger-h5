@@ -36,7 +36,7 @@ describe("ConfirmScreen OKX Demo submission", () => {
     expect(within(summary).getByText("3500 USDT")).toBeInTheDocument();
     expect(screen.getAllByText("PAPER LIVE")).toHaveLength(1);
     expect(await screen.findByText("需要演示访问码")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("演示访问码"), { target: { value: "portfolio-only" } });
+    fireEvent.change(screen.getByLabelText("演示访问码"), { target: { value: "demo-access-code" } });
     fireEvent.click(screen.getByRole("button", { name: "进入 OKX 模拟盘" }));
     expect(await screen.findByRole("button", { name: "提交到 OKX Demo Trading" })).toBeInTheDocument();
 
