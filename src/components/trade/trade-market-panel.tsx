@@ -3,7 +3,7 @@
 import { TrendUp, WarningCircle } from "@phosphor-icons/react";
 import { useEffect } from "react";
 
-import { chartPeriods } from "@/lib/market-data/types";
+import { chartPeriods, type ChartPeriod } from "@/lib/market-data/types";
 import { Change } from "@/components/ui";
 import { CandlestickChart } from "./candlestick-chart";
 import { useTradeMarket } from "./use-trade-market";
@@ -18,7 +18,7 @@ function compactVolume(value: number, symbol: string): string {
   return `${new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 2 }).format(value)} ${symbol}`;
 }
 
-export function TradeMarketPanel({ pair, onPriceChange }: { pair: TradingPairConfig; onPriceChange?: (price: number) => void }) {
+export function TradeMarketPanel({ pair, onPriceChange, onPeriodChange }: { pair: TradingPairConfig; onPriceChange?: (price: number) => void; onPeriodChange?: (period: ChartPeriod) => void }) {
   const market = useTradeMarket(pair);
   const ticker = market.ticker;
   const change = ticker && ticker.open24h !== 0
@@ -61,7 +61,7 @@ export function TradeMarketPanel({ pair, onPriceChange }: { pair: TradingPairCon
             type="button"
             aria-pressed={market.period === period}
             className={market.period === period ? "active" : ""}
-            onClick={() => market.setPeriod(period)}
+            onClick={() => { market.setPeriod(period); onPeriodChange?.(period); }}
             key={period}
           >{period}</button>)}
         </div>

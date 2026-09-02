@@ -1,13 +1,13 @@
 import type { ChartPeriod, MarketInstrument } from "./types";
 
-export type AISignalSide = "buy" | "sell" | "neutral";
+export type AISignalBias = "bullish" | "bearish" | "neutral";
 
 export type AISignal = {
   id: string;
   instrument: MarketInstrument;
   timeframe: ChartPeriod;
-  side: AISignalSide;
-  confidence: number;
+  marketBias: AISignalBias;
+  dataQuality: "high" | "medium" | "low";
   price: number;
   timestamp: number;
   explanation: string;

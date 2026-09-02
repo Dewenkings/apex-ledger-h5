@@ -81,7 +81,7 @@ describe("TradeScreen live market integration", () => {
     expect(await screen.findByText("70,000.00")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "ETH/USDT" })).toBeInTheDocument();
     expect(screen.getByText("现货")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /AI 信号/ })).not.toBeInTheDocument();
+    expect(await screen.findByLabelText("AI 行情洞察")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "收藏 ETH/USDT" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "更多行情选项" })).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "行情" })).toHaveAttribute("aria-selected", "true");

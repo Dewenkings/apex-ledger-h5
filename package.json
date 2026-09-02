@@ -13,7 +13,10 @@
   },
   "dependencies": {
     "@base-org/account": "^2.5.10",
+    "@langchain/core": "^1.2.9",
+    "@langchain/langgraph": "^1.4.13",
     "@metamask/connect-evm": "^2.1.1",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@phosphor-icons/react": "^2.1.10",
     "@reown/appkit": "^1.8.23",
     "@reown/appkit-adapter-wagmi": "^1.8.23",

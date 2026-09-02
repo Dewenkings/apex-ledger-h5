@@ -53,6 +53,13 @@
 
 两类余额从不合并，也不会互相授权。RPC 故障不会清空 Demo 余额，OKX Demo 故障也不会影响链上钱包展示。
 
+### AI Market Copilot
+
+- 交易页展示行情偏向、关键动因、主要风险、数据质量和 OKX 来源时间，并提供自然语言追问。
+- LangGraph.js 用显式节点完成意图识别、证据收集与回答生成；MCP 负责受控工具调用，DeepSeek 只解释经过校验的数据。
+- 趋势、波动率、量能、24 小时区间位置与盘口失衡在 MCP 层确定性计算，不让模型虚构数值。
+- 模型未配置或调用失败时回退为规则分析；MCP 整体不可用时仅降级 AI 卡片，不影响行情、钱包和 Demo Trading。
+
 ## 技术架构
 
 ```mermaid
@@ -63,12 +70,16 @@ flowchart LR
   UI --> AUTH[SIWE Routes]
   UI --> DEMO[Demo Trading Routes]
   UI --> RPC[EVM Public RPC]
+  UI --> AGENT[LangGraph.js Copilot]
 
   MD --> OKX_PUBLIC[OKX Public REST]
   MD --> KRAKEN[Kraken Public REST]
   AUTH --> REDIS[(Upstash Redis)]
   DEMO --> REDIS
   DEMO --> OKX_DEMO[OKX Demo Trading API]
+  AGENT --> MCP[Nexus MCP Server]
+  MCP --> OKX_PUBLIC
+  AGENT --> LLM[DeepSeek API]
 ```
 
 | 层级 | 主要职责 | 关键目录 |
@@ -78,6 +89,7 @@ flowchart LR
 | 模拟交易 | OKX Demo 签名、订单服务与风险边界 | `src/lib/okx-demo`、`src/app/api/demo` |
 | 身份与权限 | SIWE、Session、owner 工作区 | `src/features/auth`、`src/server/auth`、`src/server/identity` |
 | Web3 | 网络、Token 白名单与只读余额 | `src/lib/web3`、`src/features/wallet` |
+| AI Agent | LangGraph 编排、模型适配、MCP 工具与确定性降级 | `src/server/ai`、`src/lib/ai`、`src/features/ai` |
 
 ## 身份与权限边界
 
@@ -161,6 +173,11 @@ npm run dev
 | `NEXT_PUBLIC_REOWN_PROJECT_ID` | 公开 | Reown Cloud Project ID |
 | `NEXT_PUBLIC_APP_URL` | 公开 | 应用正式 Origin |
 | `OKX_API_BASE_URL` | 可选 | 可访问的 OKX 兼容公开行情网关 |
+| `NEXUS_MCP_URL` | 服务端 | Nexus Streamable HTTP MCP 地址 |
+| `NEXUS_MCP_TOKEN` | Secret | 与 MCP 服务 `MCP_AUTH_TOKEN` 相同的 Bearer Token |
+| `DEEPSEEK_API_KEY` | Secret/可选 | DeepSeek API Key；不配置时使用确定性降级分析 |
+| `DEEPSEEK_BASE_URL` | 服务端/可选 | 默认 `https://api.deepseek.com` |
+| `DEEPSEEK_MODEL` | 服务端/可选 | 默认 `deepseek-v4-flash` |
 
 私有 Demo 配置不完整时，相关接口会安全返回 `503`，不会回退到伪造成交。
 
@@ -190,8 +207,9 @@ npm run build
 - [x] OKX Demo Trading 与订单全生命周期管理
 - [x] 钱包连接、SIWE 与多链只读资产
 - [ ] Monorepo 共享业务包与 React Native 客户端
-- [ ] MCP Server：行情、账户与订单草稿工具
-- [ ] AI Agent：自然语言行情问答与受控订单生成
+- [x] MCP Server：聚合行情上下文与可解释技术指标工具
+- [x] AI Agent：LangGraph.js 行情洞察、风险解释与自然语言问答
+- [ ] AI 订单草稿：只生成受控参数，仍由用户在确认页二次确认
 - [ ] 跨链资产聚合
 
 MCP 与 AI Agent 将复用现有领域服务。所有订单写操作仍需参数校验、权限限制和用户二次确认。
