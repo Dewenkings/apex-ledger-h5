@@ -108,7 +108,7 @@ export function TradeScreen({ pair }: { pair: TradingPairConfig }) {
               : <span className="order-submit disabled" aria-disabled="true">确认{activeSide === "buy" ? "买入" : "卖出"} {pair.baseSymbol}</span>}
             <p className="safety-note"><ShieldCheck /> 模拟费率 0.10%，不会请求钱包签名或扣除真实资产</p>
         </section>
-        <p className="market-data-disclosure">行情与深度来自第三方公开市场数据，仅供作品演示，不构成投资建议。</p>
+        <p className="market-data-disclosure">行情与深度来自第三方公开市场数据，仅供信息参考，不构成投资建议。</p>
       </div>}
     </div>
   </AppShell>;

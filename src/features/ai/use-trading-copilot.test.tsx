@@ -14,7 +14,7 @@ const insightResponse = {
     risks: ["短周期波动仍可能放大"],
     dataQuality: "high",
     sources: [{ tool: "get_market_context", source: "OKX", asOf: "2026-09-03T03:00:00.000Z" }],
-    disclaimer: "仅供产品演示，不构成投资建议。",
+    disclaimer: "基于公开市场数据，仅供信息参考，不构成投资建议。",
     fallback: false,
   },
 };

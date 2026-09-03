@@ -12,7 +12,7 @@ const insight: AIInsight = {
   risks: ["价格接近 24 小时区间高位", "盘口结构可能快速变化"],
   dataQuality: "high",
   sources: [{ tool: "get_market_context", source: "OKX", asOf: "2026-09-02T08:00:00.000Z" }],
-  disclaimer: "仅供产品演示与信息参考，不构成投资建议。",
+  disclaimer: "基于公开市场数据，仅供信息参考，不构成投资建议。",
   fallback: false,
 };
 

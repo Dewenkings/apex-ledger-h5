@@ -31,4 +31,12 @@ describe("Tailwind CSS foundation", () => {
     expect(shell).toContain("border-line");
     expect(shell).toContain("text-primary");
   });
+
+  it("keeps editable controls at 16px on mobile to prevent iOS focus zoom", () => {
+    const css = readFileSync(resolve(root, "src/app/globals.css"), "utf8");
+
+    expect(css).toMatch(/@media \(max-width: 699px\)[\s\S]*input,\s*textarea,\s*select[\s\S]*font-size:\s*16px/);
+    expect(css).not.toContain("user-scalable=no");
+    expect(css).not.toContain("maximum-scale=1");
+  });
 });

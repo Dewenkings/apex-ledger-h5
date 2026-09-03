@@ -35,7 +35,7 @@ const aiInsight = {
     risks: ["价格接近 24 小时区间高位", "短线波动可能放大"],
     dataQuality: "high",
     sources: [{ tool: "get_market_context", source: "OKX", asOf: "2026-09-03T03:00:00.000Z" }],
-    disclaimer: "仅供产品演示与信息参考，不构成投资建议。",
+    disclaimer: "基于公开市场数据，仅供信息参考，不构成投资建议。",
     fallback: false,
   },
 };
@@ -134,6 +134,8 @@ describe("TradeScreen live market integration", () => {
     expect(screen.getByLabelText("向 AI 询问行情")).toBeInTheDocument();
     expect(screen.getByText("风险提示")).toBeInTheDocument();
     expect(screen.getByText("助手会自动携带当前交易对与周期，只基于可追溯的行情证据回答。")).toBeInTheDocument();
+    expect(screen.getByText("AI 输出基于公开市场数据，仅供信息参考，不构成投资建议，也不会自动触发交易。")).toBeInTheDocument();
+    expect(screen.queryByText(/作品演示|产品演示/)).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "BTC 模拟交易" })).not.toBeInTheDocument();
     expect(fetcher.mock.calls.some(([url]) => String(url).includes("/api/ai/insight"))).toBe(true);

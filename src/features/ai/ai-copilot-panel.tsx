@@ -49,7 +49,7 @@ export function AICopilotPanel({ instrument, timeframe, insight, response, isLoa
       {response && <article className="ai-chat-answer" aria-live="polite"><strong>{response.title}</strong><p>{response.summary}</p><ul>{response.keyFactors.slice(0, 3).map((factor) => <li key={factor}>{factor}</li>)}</ul><small>{response.disclaimer}</small></article>}
       {chatError && <p className="ai-chat-error" role="alert">{chatError}</p>}
       <form onSubmit={submit} className="ai-chat-form"><input value={question} maxLength={1000} onChange={(event) => setQuestion(event.target.value)} aria-label="向 AI 询问行情" placeholder="询问行情动因、风险或盘口结构…" /><button type="submit" aria-label="发送问题" disabled={!question.trim() || isAsking}>{isAsking ? <span className="ai-chat-spinner" /> : <PaperPlaneRight weight="fill" />}</button></form>
-      <p className="ai-assistant-disclaimer">AI 输出仅用于作品演示与行情解释，不构成投资建议，也不会触发交易。</p>
+      <p className="ai-assistant-disclaimer">AI 输出基于公开市场数据，仅供信息参考，不构成投资建议，也不会自动触发交易。</p>
     </section>
   </div>;
 }

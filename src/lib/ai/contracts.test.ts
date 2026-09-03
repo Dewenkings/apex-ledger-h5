@@ -53,5 +53,6 @@ describe("createDeterministicInsight", () => {
     expect(insight.sources).toEqual([{ tool: "get_market_context", source: "OKX", asOf: context.asOf }]);
     expect(insight.fallback).toBe(true);
     expect(insight.disclaimer).toContain("不构成投资建议");
+    expect(insight.disclaimer).not.toMatch(/作品演示|产品演示/);
   });
 });

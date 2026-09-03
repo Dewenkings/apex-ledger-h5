@@ -103,7 +103,7 @@ export function createDeepSeekInsightProvider(options: ProviderOptions = {}): In
           dataQuality: input.context.dataQuality === "low" ? "low" : generated.dataQuality,
           sources: [input.context, ...(input.comparisonContext ? [input.comparisonContext] : [])]
             .map((context) => ({ tool: "get_market_context", source: "OKX" as const, asOf: context.asOf })),
-          disclaimer: "仅供产品演示与信息参考，不构成投资建议。",
+          disclaimer: "基于公开市场数据，仅供信息参考，不构成投资建议。",
           fallback: false,
         });
       } catch {

@@ -138,7 +138,7 @@ export function createDeterministicInsight(context: MarketContext): AIInsight {
     risks,
     dataQuality: context.dataQuality,
     sources: [{ tool: "get_market_context", source: "OKX", asOf: context.asOf }],
-    disclaimer: "仅供产品演示与信息参考，不构成投资建议。",
+    disclaimer: "基于公开市场数据，仅供信息参考，不构成投资建议。",
     fallback: true,
   });
 }

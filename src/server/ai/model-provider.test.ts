@@ -40,6 +40,7 @@ describe("DeepSeek insight provider", () => {
     expect(result.fallback).toBe(false);
     expect(result.sources[0]).toEqual({ tool: "get_market_context", source: "OKX", asOf: context.asOf });
     expect(result.disclaimer).toContain("不构成投资建议");
+    expect(result.disclaimer).not.toMatch(/作品演示|产品演示/);
     expect(JSON.stringify(fetcher.mock.calls)).not.toContain("NEXT_PUBLIC");
     const request = JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body));
     expect(request.messages[0].content).toContain("简体中文");

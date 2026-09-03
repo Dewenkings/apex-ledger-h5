@@ -724,6 +724,14 @@
   .ai-chat-spinner { @apply size-4 animate-spin rounded-full border-2 border-[#05110b]/30 border-t-[#05110b]; }
 }
 
+@media (max-width: 699px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 @media (max-width: 360px) {
   .paper-badge { @apply p-1.5 text-[8px]; }
   .market-page-header .paper-badge { @apply hidden; }
