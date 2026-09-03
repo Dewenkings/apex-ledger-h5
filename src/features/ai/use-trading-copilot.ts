@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CopilotResponseSchema, type AIInsight } from "@/lib/ai/contracts";
@@ -20,27 +21,22 @@ async function requestInsight(endpoint: CopilotEndpoint, body: object, signal?: 
 
 export function useTradingCopilot(instrument: string, timeframe: ChartPeriod, enabled = true) {
   const requestKey = `${instrument}:${timeframe}`;
-  const [insightState, setInsightState] = useState<{ key: string; insight: AIInsight | null; error: string | null } | null>(null);
   const [chatState, setChatState] = useState<{ key: string; response: AIInsight | null; error: string | null } | null>(null);
   const [askingKey, setAskingKey] = useState<string | null>(null);
   const chatAbortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    if (!enabled) return;
-    const controller = new AbortController();
-    requestInsight("/api/ai/insight", {
+  const insightQuery = useQuery({
+    queryKey: ["ai", "insight", instrument, timeframe],
+    queryFn: ({ signal }) => requestInsight("/api/ai/insight", {
       instrument,
       timeframe,
       question: "总结当前市场结构、关键动因与主要风险。",
-    }, controller.signal)
-      .then((insight) => setInsightState({ key: requestKey, insight, error: null }))
-      .catch((cause: unknown) => {
-        if (!(cause instanceof DOMException && cause.name === "AbortError")) {
-          setInsightState({ key: requestKey, insight: null, error: "AI 分析暂不可用" });
-        }
-      });
-    return () => controller.abort();
-  }, [enabled, instrument, requestKey, timeframe]);
+    }, signal),
+    enabled,
+    staleTime: 60_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
 
   useEffect(() => {
     chatAbortRef.current?.abort();
@@ -73,11 +69,11 @@ export function useTradingCopilot(instrument: string, timeframe: ChartPeriod, en
     }
   }, [instrument, requestKey, timeframe]);
 
-  const isLoading = enabled && insightState?.key !== requestKey;
-  const insightError = isLoading ? null : (insightState?.error ?? null);
+  const isLoading = enabled && insightQuery.isPending;
+  const insightError = insightQuery.isError ? "AI 分析暂不可用" : null;
   const currentChatState = chatState?.key === requestKey ? chatState : null;
   return {
-    insight: isLoading ? null : (insightState?.insight ?? null),
+    insight: insightQuery.data ?? null,
     response: currentChatState?.response ?? null,
     isLoading,
     isAsking: askingKey === requestKey,

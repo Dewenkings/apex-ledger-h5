@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { TradeScreen } from "@/components/screens";
-import { tradingPairs } from "@/lib/trading/pairs";
+import { tradingPairs, type TradingPairConfig } from "@/lib/trading/pairs";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/trade/btc-usdt",
@@ -42,11 +43,16 @@ const aiInsight = {
 
 afterEach(() => vi.unstubAllGlobals());
 
+function renderTradeScreen(pair: TradingPairConfig = tradingPairs[0]) {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={queryClient}><TradeScreen pair={pair} /></QueryClientProvider>);
+}
+
 describe("TradeScreen live market integration", () => {
   it("prevents confirmation until the live price is ready", () => {
     vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => undefined)));
 
-    render(<TradeScreen pair={tradingPairs[0]} />);
+    renderTradeScreen();
 
     expect(screen.getByText("确认买入 BTC")).toHaveAttribute("aria-disabled", "true");
     expect(screen.queryByRole("link", { name: "确认买入 BTC" })).not.toBeInTheDocument();
@@ -58,7 +64,7 @@ describe("TradeScreen live market integration", () => {
       data: String(input).includes("/ticker") ? ticker : candles,
     }))));
 
-    render(<TradeScreen pair={tradingPairs[1]} />);
+    renderTradeScreen(tradingPairs[1]);
 
     const ticket = await screen.findByRole("region", { name: "ETH 模拟交易" });
     expect(ticket).toBeInTheDocument();
@@ -91,7 +97,7 @@ describe("TradeScreen live market integration", () => {
     ));
     vi.stubGlobal("fetch", fetcher);
 
-    render(<TradeScreen pair={tradingPairs[1]} />);
+    renderTradeScreen(tradingPairs[1]);
 
     expect(await screen.findByText("70,000.00")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "ETH/USDT" })).toBeInTheDocument();
@@ -123,11 +129,15 @@ describe("TradeScreen live market integration", () => {
     });
     vi.stubGlobal("fetch", fetcher);
 
-    render(<TradeScreen pair={tradingPairs[0]} />);
+    renderTradeScreen();
 
+    await screen.findByText("70,000.00");
+    const marketPanel = document.getElementById("trade-panel-market");
+    const marketRequestCount = fetcher.mock.calls.filter(([url]) => String(url).includes("/api/market/")).length;
     expect(fetcher.mock.calls.some(([url]) => String(url).includes("/api/ai/insight"))).toBe(false);
     fireEvent.click(screen.getByRole("tab", { name: "AI 洞察" }));
 
+    expect(marketPanel).toHaveAttribute("hidden");
     expect(await screen.findByRole("tabpanel", { name: "AI 洞察" })).toBeInTheDocument();
     expect(await screen.findByText("短周期结构偏强")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "AI 行情助手" })).toBeInTheDocument();
@@ -139,6 +149,11 @@ describe("TradeScreen live market integration", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "BTC 模拟交易" })).not.toBeInTheDocument();
     expect(fetcher.mock.calls.some(([url]) => String(url).includes("/api/ai/insight"))).toBe(true);
+
+    fireEvent.click(screen.getByRole("tab", { name: "行情" }));
+    expect(document.getElementById("trade-panel-market")).toBe(marketPanel);
+    expect(marketPanel).not.toHaveAttribute("hidden");
+    expect(fetcher.mock.calls.filter(([url]) => String(url).includes("/api/market/")).length).toBe(marketRequestCount);
   });
 
   it("replaces the market terminal with real public instrument information", async () => {
@@ -150,7 +165,7 @@ describe("TradeScreen live market integration", () => {
       } }));
       return Promise.resolve(Response.json({ source: "okx", data: url.includes("/ticker") ? ticker : candles }));
     }));
-    render(<TradeScreen pair={tradingPairs[1]} />);
+    renderTradeScreen(tradingPairs[1]);
 
     fireEvent.click(screen.getByRole("tab", { name: "信息" }));
 

@@ -20,6 +20,7 @@ const money = (value: number, digits = 2) => `$${value.toLocaleString(undefined,
 
 export function TradeScreen({ pair }: { pair: TradingPairConfig }) {
   const [activeTab, setActiveTab] = useState<"market" | "information" | "ai">("market");
+  const [visitedTabs, setVisitedTabs] = useState({ information: false, ai: false });
   const [type, setType] = useState<"limit" | "market">("limit");
   const [amount, setAmount] = useState<string>(pair.demoAmount);
   const [marketPrice, setMarketPrice] = useState(0);
@@ -47,13 +48,18 @@ export function TradeScreen({ pair }: { pair: TradingPairConfig }) {
     return `/trade/${pair.pairSlug}/confirm?${query}`;
   };
 
+  const selectTab = (tab: "market" | "information" | "ai") => {
+    setActiveTab(tab);
+    if (tab !== "market") setVisitedTabs((current) => current[tab] ? current : { ...current, [tab]: true });
+  };
+
   const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
     const tabs = ["market", "information", "ai"] as const;
     const offset = event.key === "ArrowRight" ? 1 : -1;
     const nextTab = tabs[(tabs.indexOf(activeTab) + offset + tabs.length) % tabs.length];
-    setActiveTab(nextTab);
+    selectTab(nextTab);
     ({ market: marketTabRef, information: informationTabRef, ai: aiTabRef }[nextTab]).current?.focus();
   };
 
@@ -74,13 +80,11 @@ export function TradeScreen({ pair }: { pair: TradingPairConfig }) {
         </div>
       </header>
       <nav className="trade-page-tabs" aria-label="交易对详情" role="tablist">
-        <button ref={marketTabRef} id="trade-tab-market" aria-controls="trade-panel-market" tabIndex={activeTab === "market" ? 0 : -1} type="button" role="tab" aria-selected={activeTab === "market"} className={activeTab === "market" ? "active" : ""} onKeyDown={handleTabKeyDown} onClick={() => setActiveTab("market")}>行情</button>
-        <button ref={informationTabRef} id="trade-tab-information" aria-controls="trade-panel-information" tabIndex={activeTab === "information" ? 0 : -1} type="button" role="tab" aria-selected={activeTab === "information"} className={activeTab === "information" ? "active" : ""} onKeyDown={handleTabKeyDown} onClick={() => setActiveTab("information")}>信息</button>
-        <button ref={aiTabRef} id="trade-tab-ai" aria-controls="trade-panel-ai" tabIndex={activeTab === "ai" ? 0 : -1} type="button" role="tab" aria-selected={activeTab === "ai"} className={activeTab === "ai" ? "active" : ""} onKeyDown={handleTabKeyDown} onClick={() => setActiveTab("ai")}><Sparkle weight="fill" />AI 洞察</button>
+        <button ref={marketTabRef} id="trade-tab-market" aria-controls="trade-panel-market" tabIndex={activeTab === "market" ? 0 : -1} type="button" role="tab" aria-selected={activeTab === "market"} className={activeTab === "market" ? "active" : ""} onKeyDown={handleTabKeyDown} onClick={() => selectTab("market")}>行情</button>
+        <button ref={informationTabRef} id="trade-tab-information" aria-controls="trade-panel-information" tabIndex={activeTab === "information" ? 0 : -1} type="button" role="tab" aria-selected={activeTab === "information"} className={activeTab === "information" ? "active" : ""} onKeyDown={handleTabKeyDown} onClick={() => selectTab("information")}>信息</button>
+        <button ref={aiTabRef} id="trade-tab-ai" aria-controls="trade-panel-ai" tabIndex={activeTab === "ai" ? 0 : -1} type="button" role="tab" aria-selected={activeTab === "ai"} className={activeTab === "ai" ? "active" : ""} onKeyDown={handleTabKeyDown} onClick={() => selectTab("ai")}><Sparkle weight="fill" />AI 洞察</button>
       </nav>
-      {activeTab === "information" ? <div id="trade-panel-information" role="tabpanel" tabIndex={0} aria-labelledby="trade-tab-information"><TradeInstrumentInfo pair={pair} /></div> : activeTab === "ai" ? <div id="trade-panel-ai" role="tabpanel" tabIndex={0} aria-labelledby="trade-tab-ai">
-        <AICopilotPanel instrument={pair.instrument} timeframe={chartPeriod} insight={copilot.insight} response={copilot.response} isLoading={copilot.isLoading} isAsking={copilot.isAsking} insightError={copilot.insightError} chatError={copilot.chatError} onAsk={copilot.ask} />
-      </div> : <div id="trade-panel-market" role="tabpanel" tabIndex={0} aria-labelledby="trade-tab-market">
+      <div id="trade-panel-market" role="tabpanel" tabIndex={0} aria-labelledby="trade-tab-market" hidden={activeTab !== "market"}>
         <TradeMarketPanel pair={pair} onPriceChange={receivePrice} onPeriodChange={setChartPeriod} />
         <OrderBookCard pair={pair} />
         <section className={`inline-order-ticket ${activeSide}`} aria-label={`${pair.baseSymbol} 模拟交易`}>
@@ -109,6 +113,10 @@ export function TradeScreen({ pair }: { pair: TradingPairConfig }) {
             <p className="safety-note"><ShieldCheck /> 模拟费率 0.10%，不会请求钱包签名或扣除真实资产</p>
         </section>
         <p className="market-data-disclosure">行情与深度来自第三方公开市场数据，仅供信息参考，不构成投资建议。</p>
+      </div>
+      {visitedTabs.information && <div id="trade-panel-information" role="tabpanel" tabIndex={0} aria-labelledby="trade-tab-information" hidden={activeTab !== "information"}><TradeInstrumentInfo pair={pair} /></div>}
+      {visitedTabs.ai && <div id="trade-panel-ai" role="tabpanel" tabIndex={0} aria-labelledby="trade-tab-ai" hidden={activeTab !== "ai"}>
+        <AICopilotPanel instrument={pair.instrument} timeframe={chartPeriod} insight={copilot.insight} response={copilot.response} isLoading={copilot.isLoading} isAsking={copilot.isAsking} insightError={copilot.insightError} chatError={copilot.chatError} onAsk={copilot.ask} />
       </div>}
     </div>
   </AppShell>;

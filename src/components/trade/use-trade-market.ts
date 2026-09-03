@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
 
 import type { ChartPeriod, LiveMarketResponse, LiveMarketSource, MarketCandle, MarketTicker } from "@/lib/market-data/types";
 import type { TradingPairConfig } from "@/lib/trading/pairs";
@@ -37,36 +38,45 @@ async function getJson<T>(url: string, signal: AbortSignal): Promise<T> {
 
 export function useTradeMarket(pair: TradingPairConfig) {
   const [period, setPeriod] = useState<ChartPeriod>("1D");
-  const [ticker, setTicker] = useState<MarketTicker | null>(null);
-  const [candles, setCandles] = useState<MarketCandle[]>([]);
-  const [tickerLoading, setTickerLoading] = useState(true);
-  const [candlesLoading, setCandlesLoading] = useState(true);
-  const [tickerSource, setTickerSource] = useState<DataSource>("okx");
-  const [candlesSource, setCandlesSource] = useState<DataSource>("okx");
-  const [tickerError, setTickerError] = useState(false);
-  const [candlesError, setCandlesError] = useState(false);
-  const [retryKey, setRetryKey] = useState(0);
+  const tickerQuery = useQuery({
+    queryKey: ["market", "ticker", pair.instrument],
+    queryFn: ({ signal }) => getJson<LiveMarketResponse<MarketTicker>>(`/api/market/ticker?instrument=${pair.instrument}`, signal),
+    staleTime: 10_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+  const candlesQuery = useQuery({
+    queryKey: ["market", "candles", pair.instrument, period],
+    queryFn: async ({ signal }) => {
+      const response = await getJson<LiveMarketResponse<MarketCandle[]>>(`/api/market/candles?instrument=${pair.instrument}&period=${period}`, signal);
+      if (!response.data.length) throw new Error("Empty candle response");
+      return response;
+    },
+    staleTime: 30_000,
+    gcTime: 15 * 60_000,
+    placeholderData: keepPreviousData,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
 
-  useEffect(() => {
-    const controller = new AbortController();
-    getJson<LiveMarketResponse<MarketTicker>>(`/api/market/ticker?instrument=${pair.instrument}`, controller.signal)
-      .then((response) => { setTicker(response.data); setTickerSource(response.source); setTickerError(false); })
-      .catch((error: unknown) => { if (!(error instanceof DOMException && error.name === "AbortError")) { setTicker(fallbackTicker(pair)); setTickerSource("demo"); setTickerError(true); } })
-      .finally(() => { if (!controller.signal.aborted) setTickerLoading(false); });
-    return () => controller.abort();
-  }, [pair, retryKey]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    getJson<LiveMarketResponse<MarketCandle[]>>(`/api/market/candles?instrument=${pair.instrument}&period=${period}`, controller.signal)
-      .then((response) => { if (!response.data.length) throw new Error("Empty candle response"); setCandles(response.data); setCandlesSource(response.source); setCandlesError(false); })
-      .catch((error: unknown) => { if (!(error instanceof DOMException && error.name === "AbortError")) { setCandles(buildFallbackCandles(pair, period)); setCandlesSource("demo"); setCandlesError(true); } })
-      .finally(() => { if (!controller.signal.aborted) setCandlesLoading(false); });
-    return () => controller.abort();
-  }, [pair, period, retryKey]);
-
-  const selectPeriod = useCallback((next: ChartPeriod) => { setCandlesLoading(true); setPeriod(next); }, []);
-  const retry = useCallback(() => { setTickerLoading(true); setCandlesLoading(true); setRetryKey((key) => key + 1); }, []);
+  const ticker = tickerQuery.data?.data ?? (tickerQuery.isError ? fallbackTicker(pair) : null);
+  const candles = candlesQuery.data?.data ?? (candlesQuery.isError ? buildFallbackCandles(pair, period) : []);
+  const tickerSource: DataSource = tickerQuery.isError ? "demo" : (tickerQuery.data?.source ?? "okx");
+  const candlesSource: DataSource = candlesQuery.isError ? "demo" : (candlesQuery.data?.source ?? "okx");
+  const selectPeriod = useCallback((next: ChartPeriod) => setPeriod(next), []);
+  const retry = useCallback(() => { void tickerQuery.refetch(); void candlesQuery.refetch(); }, [candlesQuery, tickerQuery]);
   const source: MarketDisplaySource = tickerSource === "demo" || candlesSource === "demo" ? "demo" : tickerSource === candlesSource ? tickerSource : "mixed";
-  return { period, setPeriod: selectPeriod, ticker, candles, isInitialLoading: (!ticker || !candles.length) && (tickerLoading || candlesLoading), isRefreshing: !!candles.length && candlesLoading, source, isFallback: source === "demo", hasError: tickerError || candlesError, retry };
+  return {
+    period,
+    setPeriod: selectPeriod,
+    ticker,
+    candles,
+    isInitialLoading: (!ticker || !candles.length) && (tickerQuery.isPending || candlesQuery.isPending),
+    isRefreshing: !!candles.length && candlesQuery.isFetching,
+    source,
+    isFallback: source === "demo",
+    hasError: tickerQuery.isError || candlesQuery.isError,
+    retry,
+  };
 }

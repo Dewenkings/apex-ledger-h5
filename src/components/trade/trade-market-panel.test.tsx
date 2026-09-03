@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ReactElement } from "react";
 
 import { TradeMarketPanel } from "./trade-market-panel";
 import { tradingPairs } from "@/lib/trading/pairs";
@@ -29,11 +31,15 @@ function okMarketFetch(input: RequestInfo | URL): Promise<Response> {
 
 afterEach(() => vi.unstubAllGlobals());
 
+function renderWithQuery(ui: ReactElement, queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
+  return { ...render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>), queryClient };
+}
+
 describe("TradeMarketPanel", () => {
   it("loads BTC-USDT public data with 1D selected by default", async () => {
     vi.stubGlobal("fetch", vi.fn(okMarketFetch));
 
-    render(<TradeMarketPanel pair={tradingPairs[0]} />);
+    renderWithQuery(<TradeMarketPanel pair={tradingPairs[0]} />);
 
     expect(screen.getByRole("status", { name: "正在加载实时行情" })).toBeInTheDocument();
     expect(await screen.findByText("68,342.10")).toBeInTheDocument();
@@ -53,7 +59,7 @@ describe("TradeMarketPanel", () => {
   it("requests and selects the candle period the user taps", async () => {
     const fetcher = vi.fn(okMarketFetch);
     vi.stubGlobal("fetch", fetcher);
-    render(<TradeMarketPanel pair={tradingPairs[0]} />);
+    renderWithQuery(<TradeMarketPanel pair={tradingPairs[0]} />);
     await screen.findByText("68,342.10");
 
     fireEvent.click(screen.getByRole("button", { name: "4H" }));
@@ -70,7 +76,7 @@ describe("TradeMarketPanel", () => {
       return new Response("unavailable", { status: 502 });
     });
     vi.stubGlobal("fetch", fetcher);
-    render(<TradeMarketPanel pair={tradingPairs[0]} />);
+    renderWithQuery(<TradeMarketPanel pair={tradingPairs[0]} />);
 
     expect(await screen.findByText("演示数据")).toBeInTheDocument();
     fetcher.mockImplementation(okMarketFetch);
@@ -85,7 +91,7 @@ describe("TradeMarketPanel", () => {
       data: String(input).includes("/ticker") ? ticker : candles,
     }))));
 
-    render(<TradeMarketPanel pair={tradingPairs[0]} />);
+    renderWithQuery(<TradeMarketPanel pair={tradingPairs[0]} />);
 
     expect(await screen.findByText("实时行情")).toBeInTheDocument();
     expect(screen.queryByText(/KRAKEN|OKX/)).not.toBeInTheDocument();
@@ -99,7 +105,7 @@ describe("TradeMarketPanel", () => {
     })));
     vi.stubGlobal("fetch", fetcher);
 
-    render(<TradeMarketPanel pair={tradingPairs[1]} />);
+    renderWithQuery(<TradeMarketPanel pair={tradingPairs[1]} />);
 
     expect(await screen.findByRole("region", { name: "ETH/USDT 实时行情" })).toBeInTheDocument();
     expect(screen.getByLabelText("ETH-USDT 蜡烛图")).toBeInTheDocument();
@@ -107,5 +113,20 @@ describe("TradeMarketPanel", () => {
       "/api/market/ticker?instrument=ETH-USDT",
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
+  });
+
+  it("reuses fresh ticker and candle data after the panel remounts", async () => {
+    const fetcher = vi.fn(okMarketFetch);
+    vi.stubGlobal("fetch", fetcher);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const first = renderWithQuery(<TradeMarketPanel pair={tradingPairs[0]} />, queryClient);
+    await screen.findByText("68,342.10");
+    const requestCount = fetcher.mock.calls.length;
+
+    first.unmount();
+    renderWithQuery(<TradeMarketPanel pair={tradingPairs[0]} />, queryClient);
+
+    expect(await screen.findByText("68,342.10")).toBeInTheDocument();
+    expect(fetcher).toHaveBeenCalledTimes(requestCount);
   });
 });
