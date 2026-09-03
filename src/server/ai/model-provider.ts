@@ -2,12 +2,17 @@ import { z } from "zod";
 
 import { AIInsightSchema, type AIInsight, type MarketContext } from "@/lib/ai/contracts";
 
+const ChineseTextSchema = z.string().min(1).max(600).refine(
+  (value) => /\p{Script=Han}/u.test(value),
+  "Chinese user-facing copy required",
+);
+
 const ModelInsightSchema = z.object({
   marketBias: z.enum(["bullish", "bearish", "neutral"]),
-  title: z.string().min(1).max(80),
-  summary: z.string().min(1).max(600),
-  keyFactors: z.array(z.string().min(1).max(180)).min(1).max(4),
-  risks: z.array(z.string().min(1).max(180)).min(1).max(4),
+  title: ChineseTextSchema.refine((value) => value.length <= 80),
+  summary: ChineseTextSchema,
+  keyFactors: z.array(ChineseTextSchema.refine((value) => value.length <= 180)).min(1).max(4),
+  risks: z.array(ChineseTextSchema.refine((value) => value.length <= 180)).min(1).max(4),
   dataQuality: z.enum(["high", "medium", "low"]),
 });
 
@@ -31,7 +36,7 @@ export interface InsightProvider {
 
 function buildPrompt(input: GenerateInput): string {
   return JSON.stringify({
-    task: "仅根据 evidence 解释市场状态，不提供买卖建议，不引入新闻、政策或链上事件。",
+    task: "仅根据 evidence 使用简体中文解释市场状态，不提供买卖建议，不引入新闻、政策或链上事件。",
     question: input.question,
     evidence: {
       instrument: input.context.instrument,
@@ -76,7 +81,7 @@ export function createDeepSeekInsightProvider(options: ProviderOptions = {}): In
               temperature: 0.1,
               response_format: { type: "json_object" },
               messages: [
-                { role: "system", content: "You are a market-data explainer. Never invent evidence or give financial advice. Return JSON only." },
+                { role: "system", content: "你是行情数据解释助手。所有面向用户的字段必须使用简体中文；不得编造证据或提供投资建议；仅返回 JSON。" },
                 { role: "user", content: buildPrompt(input) },
               ],
             }),

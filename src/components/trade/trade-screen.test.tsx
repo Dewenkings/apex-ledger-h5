@@ -25,6 +25,21 @@ const candles = [
   { time: 1788048000, open: 68800, high: 70500, low: 68400, close: 70000, volume: 38, confirmed: false },
 ];
 
+const aiInsight = {
+  intent: "market_summary",
+  insight: {
+    marketBias: "bullish",
+    title: "短周期结构偏强",
+    summary: "价格与盘口数据暂时偏强，但仍需注意区间高位波动。",
+    keyFactors: ["短周期均价结构偏强", "盘口买方深度略占优"],
+    risks: ["价格接近 24 小时区间高位", "短线波动可能放大"],
+    dataQuality: "high",
+    sources: [{ tool: "get_market_context", source: "OKX", asOf: "2026-09-03T03:00:00.000Z" }],
+    disclaimer: "仅供产品演示与信息参考，不构成投资建议。",
+    fallback: false,
+  },
+};
+
 afterEach(() => vi.unstubAllGlobals());
 
 describe("TradeScreen live market integration", () => {
@@ -81,7 +96,8 @@ describe("TradeScreen live market integration", () => {
     expect(await screen.findByText("70,000.00")).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "ETH/USDT" })).toBeInTheDocument();
     expect(screen.getByText("现货")).toBeInTheDocument();
-    expect(await screen.findByLabelText("AI 行情洞察")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "AI 洞察" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("AI 行情洞察")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "收藏 ETH/USDT" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "更多行情选项" })).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "行情" })).toHaveAttribute("aria-selected", "true");
@@ -97,6 +113,30 @@ describe("TradeScreen live market integration", () => {
     await waitFor(() => {
       expect(fetcher.mock.calls.some(([url]) => String(url) === "/api/market/candles?instrument=ETH-USDT&period=1H")).toBe(true);
     });
+  });
+
+  it("opens a full Chinese AI insight tab with embedded assistant instead of a dialog", async () => {
+    const fetcher = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/ai/")) return Promise.resolve(Response.json(aiInsight));
+      return Promise.resolve(Response.json({ source: "okx", data: url.includes("/ticker") ? ticker : candles }));
+    });
+    vi.stubGlobal("fetch", fetcher);
+
+    render(<TradeScreen pair={tradingPairs[0]} />);
+
+    expect(fetcher.mock.calls.some(([url]) => String(url).includes("/api/ai/insight"))).toBe(false);
+    fireEvent.click(screen.getByRole("tab", { name: "AI 洞察" }));
+
+    expect(await screen.findByRole("tabpanel", { name: "AI 洞察" })).toBeInTheDocument();
+    expect(await screen.findByText("短周期结构偏强")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "AI 行情助手" })).toBeInTheDocument();
+    expect(screen.getByLabelText("向 AI 询问行情")).toBeInTheDocument();
+    expect(screen.getByText("风险提示")).toBeInTheDocument();
+    expect(screen.getByText("助手会自动携带当前交易对与周期，只基于可追溯的行情证据回答。")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "BTC 模拟交易" })).not.toBeInTheDocument();
+    expect(fetcher.mock.calls.some(([url]) => String(url).includes("/api/ai/insight"))).toBe(true);
   });
 
   it("replaces the market terminal with real public instrument information", async () => {

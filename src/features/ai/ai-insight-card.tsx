@@ -11,7 +11,7 @@ type Props = {
   insight: AIInsight | null;
   isLoading: boolean;
   error: string | null;
-  onOpen: () => void;
+  onOpen?: () => void;
 };
 
 export function AIInsightCard({ insight, isLoading, error, onOpen }: Props) {
@@ -28,7 +28,7 @@ export function AIInsightCard({ insight, isLoading, error, onOpen }: Props) {
 
   return <section className={`ai-insight-card ${insight.marketBias}`} aria-label="AI 行情洞察">
     <header className="ai-insight-header">
-      <div className="ai-insight-brand"><span><Sparkle weight="fill" /> AI MARKET COPILOT</span><small>{insight.fallback ? "规则降级" : "模型分析"}</small></div>
+      <div className="ai-insight-brand"><span><Sparkle weight="fill" /> AI 行情洞察</span><small>{insight.fallback ? "规则降级" : "模型分析"}</small></div>
       <span className={`ai-bias-pill ${insight.marketBias}`}>{biasLabel[insight.marketBias]}</span>
     </header>
     <h2>{insight.title}</h2>
@@ -39,7 +39,7 @@ export function AIInsightCard({ insight, isLoading, error, onOpen }: Props) {
     </div>
     <footer className="ai-insight-footer">
       <div><span>数据质量：{qualityLabel[insight.dataQuality]}</span><span>来源：{[...new Set(insight.sources.map((source) => source.source))].join(" · ")}</span></div>
-      <button type="button" onClick={onOpen}>询问 AI <ArrowRight /></button>
+      {onOpen && <button type="button" onClick={onOpen}>询问 AI <ArrowRight /></button>}
     </footer>
     <p className="ai-disclaimer">{insight.disclaimer}</p>
   </section>;

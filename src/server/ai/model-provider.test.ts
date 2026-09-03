@@ -41,6 +41,8 @@ describe("DeepSeek insight provider", () => {
     expect(result.sources[0]).toEqual({ tool: "get_market_context", source: "OKX", asOf: context.asOf });
     expect(result.disclaimer).toContain("不构成投资建议");
     expect(JSON.stringify(fetcher.mock.calls)).not.toContain("NEXT_PUBLIC");
+    const request = JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body));
+    expect(request.messages[0].content).toContain("简体中文");
   });
 
   it("rejects unsupported or malformed model output", async () => {
@@ -48,5 +50,17 @@ describe("DeepSeek insight provider", () => {
     const provider = createDeepSeekInsightProvider({ apiKey: "secret", fetcher });
 
     await expect(provider.generate({ question: "直接告诉我买还是卖", context })).rejects.toThrow("Invalid model output");
+  });
+
+  it("rejects English-only user-facing analysis so the graph can fall back to Chinese", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      choices: [{ message: { content: JSON.stringify({
+        marketBias: "neutral", title: "Range-bound market", summary: "Price remains near the middle of its range.",
+        keyFactors: ["Order book is balanced"], risks: ["Volatility may increase"], dataQuality: "high",
+      }) } }],
+    }), { status: 200 }));
+    const provider = createDeepSeekInsightProvider({ apiKey: "secret", fetcher });
+
+    await expect(provider.generate({ question: "风险如何", context })).rejects.toThrow("Invalid model output");
   });
 });

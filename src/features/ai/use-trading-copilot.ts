@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CopilotResponseSchema, type AIInsight } from "@/lib/ai/contracts";
 import type { ChartPeriod } from "@/lib/market-data/types";
@@ -18,14 +18,15 @@ async function requestInsight(endpoint: CopilotEndpoint, body: object, signal?: 
   return CopilotResponseSchema.parse(await response.json()).insight;
 }
 
-export function useTradingCopilot(instrument: string, timeframe: ChartPeriod) {
+export function useTradingCopilot(instrument: string, timeframe: ChartPeriod, enabled = true) {
   const requestKey = `${instrument}:${timeframe}`;
   const [insightState, setInsightState] = useState<{ key: string; insight: AIInsight | null; error: string | null } | null>(null);
-  const [response, setResponse] = useState<AIInsight | null>(null);
-  const [isAsking, setIsAsking] = useState(false);
-  const [chatError, setChatError] = useState<string | null>(null);
+  const [chatState, setChatState] = useState<{ key: string; response: AIInsight | null; error: string | null } | null>(null);
+  const [askingKey, setAskingKey] = useState<string | null>(null);
+  const chatAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     const controller = new AbortController();
     requestInsight("/api/ai/insight", {
       instrument,
@@ -39,28 +40,49 @@ export function useTradingCopilot(instrument: string, timeframe: ChartPeriod) {
         }
       });
     return () => controller.abort();
-  }, [instrument, requestKey, timeframe]);
+  }, [enabled, instrument, requestKey, timeframe]);
+
+  useEffect(() => {
+    chatAbortRef.current?.abort();
+    chatAbortRef.current = null;
+    return () => {
+      chatAbortRef.current?.abort();
+      chatAbortRef.current = null;
+    };
+  }, [requestKey]);
 
   const ask = useCallback(async (question: string) => {
-    setIsAsking(true);
-    setChatError(null);
+    const chatKey = requestKey;
+    chatAbortRef.current?.abort();
+    const controller = new AbortController();
+    chatAbortRef.current = controller;
+    setAskingKey(chatKey);
+    setChatState({ key: chatKey, response: null, error: null });
     try {
-      const next = await requestInsight("/api/ai/chat", { instrument, timeframe, question });
-      setResponse(next);
-    } catch {
-      setChatError("AI 回答暂不可用，请稍后重试。");
+      const next = await requestInsight("/api/ai/chat", { instrument, timeframe, question }, controller.signal);
+      if (!controller.signal.aborted) setChatState({ key: chatKey, response: next, error: null });
+    } catch (cause: unknown) {
+      if (!(cause instanceof DOMException && cause.name === "AbortError") && !controller.signal.aborted) {
+        setChatState({ key: chatKey, response: null, error: "AI 回答暂不可用，请稍后重试。" });
+      }
     } finally {
-      setIsAsking(false);
+      if (chatAbortRef.current === controller) {
+        chatAbortRef.current = null;
+        setAskingKey(null);
+      }
     }
-  }, [instrument, timeframe]);
+  }, [instrument, requestKey, timeframe]);
 
-  const isLoading = insightState?.key !== requestKey;
+  const isLoading = enabled && insightState?.key !== requestKey;
+  const insightError = isLoading ? null : (insightState?.error ?? null);
+  const currentChatState = chatState?.key === requestKey ? chatState : null;
   return {
     insight: isLoading ? null : (insightState?.insight ?? null),
-    response,
+    response: currentChatState?.response ?? null,
     isLoading,
-    isAsking,
-    error: chatError ?? (isLoading ? null : (insightState?.error ?? null)),
+    isAsking: askingKey === requestKey,
+    insightError,
+    chatError: currentChatState?.error ?? null,
     ask,
   };
 }

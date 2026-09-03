@@ -1,14 +1,13 @@
 "use client";
 
-import { ArrowLeft, ShieldCheck } from "@phosphor-icons/react";
+import { ArrowLeft, ShieldCheck, Sparkle } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useCallback, useRef, useState, type KeyboardEvent } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { PaperBadge } from "@/components/ui";
 import { WalletAccountControl } from "@/components/wallet/wallet-account-control";
-import { AIChatSheet } from "@/features/ai/ai-chat-sheet";
-import { AIInsightCard } from "@/features/ai/ai-insight-card";
+import { AICopilotPanel } from "@/features/ai/ai-copilot-panel";
 import { useTradingCopilot } from "@/features/ai/use-trading-copilot";
 import type { ChartPeriod } from "@/lib/market-data/types";
 import { estimatePaperOrder } from "@/lib/trading";
@@ -20,22 +19,22 @@ import { TradeMarketPanel } from "./trade-market-panel";
 const money = (value: number, digits = 2) => `$${value.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
 
 export function TradeScreen({ pair }: { pair: TradingPairConfig }) {
-  const [activeTab, setActiveTab] = useState<"market" | "information">("market");
+  const [activeTab, setActiveTab] = useState<"market" | "information" | "ai">("market");
   const [type, setType] = useState<"limit" | "market">("limit");
   const [amount, setAmount] = useState<string>(pair.demoAmount);
   const [marketPrice, setMarketPrice] = useState(0);
   const [limitPrice, setLimitPrice] = useState("");
   const [activeSide, setActiveSide] = useState<"buy" | "sell">("buy");
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>("1D");
-  const [copilotOpen, setCopilotOpen] = useState(false);
   const priceEdited = useRef(false);
   const marketTabRef = useRef<HTMLButtonElement>(null);
   const informationTabRef = useRef<HTMLButtonElement>(null);
+  const aiTabRef = useRef<HTMLButtonElement>(null);
   const numericAmount = Number(amount) || 0;
   const effectivePrice = Number(limitPrice) || marketPrice;
   const quote = estimatePaperOrder({ amount: numericAmount, price: effectivePrice, feeRate: .001 });
   const canSubmit = effectivePrice > 0 && numericAmount > 0;
-  const copilot = useTradingCopilot(pair.instrument, chartPeriod);
+  const copilot = useTradingCopilot(pair.instrument, chartPeriod, activeTab === "ai");
 
   const receivePrice = useCallback((price: number) => {
     setMarketPrice(price);
@@ -51,9 +50,11 @@ export function TradeScreen({ pair }: { pair: TradingPairConfig }) {
   const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
-    const nextTab = activeTab === "market" ? "information" : "market";
+    const tabs = ["market", "information", "ai"] as const;
+    const offset = event.key === "ArrowRight" ? 1 : -1;
+    const nextTab = tabs[(tabs.indexOf(activeTab) + offset + tabs.length) % tabs.length];
     setActiveTab(nextTab);
-    (nextTab === "market" ? marketTabRef : informationTabRef).current?.focus();
+    ({ market: marketTabRef, information: informationTabRef, ai: aiTabRef }[nextTab]).current?.focus();
   };
 
   return <AppShell>
@@ -75,11 +76,13 @@ export function TradeScreen({ pair }: { pair: TradingPairConfig }) {
       <nav className="trade-page-tabs" aria-label="交易对详情" role="tablist">
         <button ref={marketTabRef} id="trade-tab-market" aria-controls="trade-panel-market" tabIndex={activeTab === "market" ? 0 : -1} type="button" role="tab" aria-selected={activeTab === "market"} className={activeTab === "market" ? "active" : ""} onKeyDown={handleTabKeyDown} onClick={() => setActiveTab("market")}>行情</button>
         <button ref={informationTabRef} id="trade-tab-information" aria-controls="trade-panel-information" tabIndex={activeTab === "information" ? 0 : -1} type="button" role="tab" aria-selected={activeTab === "information"} className={activeTab === "information" ? "active" : ""} onKeyDown={handleTabKeyDown} onClick={() => setActiveTab("information")}>信息</button>
+        <button ref={aiTabRef} id="trade-tab-ai" aria-controls="trade-panel-ai" tabIndex={activeTab === "ai" ? 0 : -1} type="button" role="tab" aria-selected={activeTab === "ai"} className={activeTab === "ai" ? "active" : ""} onKeyDown={handleTabKeyDown} onClick={() => setActiveTab("ai")}><Sparkle weight="fill" />AI 洞察</button>
       </nav>
-      {activeTab === "information" ? <div id="trade-panel-information" role="tabpanel" aria-labelledby="trade-tab-information"><TradeInstrumentInfo pair={pair} /></div> : <div id="trade-panel-market" role="tabpanel" aria-labelledby="trade-tab-market">
+      {activeTab === "information" ? <div id="trade-panel-information" role="tabpanel" tabIndex={0} aria-labelledby="trade-tab-information"><TradeInstrumentInfo pair={pair} /></div> : activeTab === "ai" ? <div id="trade-panel-ai" role="tabpanel" tabIndex={0} aria-labelledby="trade-tab-ai">
+        <AICopilotPanel instrument={pair.instrument} timeframe={chartPeriod} insight={copilot.insight} response={copilot.response} isLoading={copilot.isLoading} isAsking={copilot.isAsking} insightError={copilot.insightError} chatError={copilot.chatError} onAsk={copilot.ask} />
+      </div> : <div id="trade-panel-market" role="tabpanel" tabIndex={0} aria-labelledby="trade-tab-market">
         <TradeMarketPanel pair={pair} onPriceChange={receivePrice} onPeriodChange={setChartPeriod} />
         <OrderBookCard pair={pair} />
-        <AIInsightCard insight={copilot.insight} isLoading={copilot.isLoading} error={copilot.error} onOpen={() => setCopilotOpen(true)} />
         <section className={`inline-order-ticket ${activeSide}`} aria-label={`${pair.baseSymbol} 模拟交易`}>
           <div className="order-ticket-topline">
             <div className="order-ticket-heading">
@@ -106,7 +109,6 @@ export function TradeScreen({ pair }: { pair: TradingPairConfig }) {
             <p className="safety-note"><ShieldCheck /> 模拟费率 0.10%，不会请求钱包签名或扣除真实资产</p>
         </section>
         <p className="market-data-disclosure">行情与深度来自第三方公开市场数据，仅供作品演示，不构成投资建议。</p>
-        <AIChatSheet open={copilotOpen} instrument={pair.instrument} isAsking={copilot.isAsking} response={copilot.response} error={copilot.error} onAsk={copilot.ask} onClose={() => setCopilotOpen(false)} />
       </div>}
     </div>
   </AppShell>;
