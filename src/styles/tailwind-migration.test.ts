@@ -32,6 +32,15 @@ describe("Tailwind CSS foundation", () => {
     expect(shell).toContain("text-primary");
   });
 
+  it("keeps the desktop phone shell viewport-bound with its navigation in the same scroll context", () => {
+    const shell = readFileSync(resolve(root, "src/components/layout/app-shell.tsx"), "utf8");
+
+    expect(shell).toContain("min-[700px]:h-[calc(100dvh-56px)]");
+    expect(shell).toContain("min-[700px]:overflow-y-auto");
+    expect(shell).toContain("min-[700px]:sticky");
+    expect(shell).not.toContain("min-[700px]:bottom-7");
+  });
+
   it("keeps editable controls at 16px on mobile to prevent iOS focus zoom", () => {
     const css = readFileSync(resolve(root, "src/app/globals.css"), "utf8");
 
