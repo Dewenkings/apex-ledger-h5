@@ -3,7 +3,7 @@
 import { ChatCircleDots, PaperPlaneRight, Sparkle } from "@phosphor-icons/react";
 import { useState, type FormEvent } from "react";
 
-import type { AIInsight } from "@/lib/ai/contracts";
+import type { AIInsight, CopilotGuidance } from "@/lib/ai/contracts";
 import { AIInsightCard } from "./ai-insight-card";
 
 const suggestions = [
@@ -17,6 +17,7 @@ type Props = {
   timeframe: string;
   insight: AIInsight | null;
   response: AIInsight | null;
+  guidance: CopilotGuidance | null;
   isLoading: boolean;
   isAsking: boolean;
   insightError: string | null;
@@ -24,7 +25,7 @@ type Props = {
   onAsk: (question: string) => Promise<void>;
 };
 
-export function AICopilotPanel({ instrument, timeframe, insight, response, isLoading, isAsking, insightError, chatError, onAsk }: Props) {
+export function AICopilotPanel({ instrument, timeframe, insight, response, guidance, isLoading, isAsking, insightError, chatError, onAsk }: Props) {
   const [question, setQuestion] = useState("");
 
   const submit = async (event: FormEvent) => {
@@ -47,6 +48,7 @@ export function AICopilotPanel({ instrument, timeframe, insight, response, isLoa
       <p className="ai-chat-context">助手会自动携带当前交易对与周期，只基于可追溯的行情证据回答。</p>
       <div className="ai-chat-suggestions" aria-label="推荐问题">{suggestions.map((suggestion) => <button type="button" key={suggestion} onClick={() => setQuestion(suggestion)}>{suggestion}</button>)}</div>
       {response && <article className="ai-chat-answer" aria-live="polite"><strong>{response.title}</strong><p>{response.summary}</p><ul>{response.keyFactors.slice(0, 3).map((factor) => <li key={factor}>{factor}</li>)}</ul><small>{response.disclaimer}</small></article>}
+      {guidance && <article className="ai-chat-answer" aria-live="polite"><strong>{guidance.title}</strong><p>{guidance.message}</p><div className="ai-chat-suggestions" aria-label="支持的问题">{guidance.suggestions.map((suggestion) => <button type="button" key={suggestion} onClick={() => setQuestion(suggestion)}>{suggestion}</button>)}</div></article>}
       {chatError && <p className="ai-chat-error" role="alert">{chatError}</p>}
       <form onSubmit={submit} className="ai-chat-form"><input value={question} maxLength={1000} onChange={(event) => setQuestion(event.target.value)} aria-label="向 AI 询问行情" placeholder="询问行情动因、风险或盘口结构…" /><button type="submit" aria-label="发送问题" disabled={!question.trim() || isAsking}>{isAsking ? <span className="ai-chat-spinner" /> : <PaperPlaneRight weight="fill" />}</button></form>
       <p className="ai-assistant-disclaimer">AI 输出基于公开市场数据，仅供信息参考，不构成投资建议，也不会自动触发交易。</p>

@@ -3,7 +3,7 @@
 import { PaperPlaneRight, Sparkle, X } from "@phosphor-icons/react";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 
-import type { AIInsight } from "@/lib/ai/contracts";
+import type { AIInsight, CopilotGuidance } from "@/lib/ai/contracts";
 
 const suggestions = [
   "当前最大的波动风险是什么？",
@@ -16,12 +16,13 @@ type Props = {
   instrument: string;
   isAsking: boolean;
   response: AIInsight | null;
+  guidance?: CopilotGuidance | null;
   error: string | null;
   onAsk: (question: string) => Promise<void>;
   onClose: () => void;
 };
 
-export function AIChatSheet({ open, instrument, isAsking, response, error, onAsk, onClose }: Props) {
+export function AIChatSheet({ open, instrument, isAsking, response, guidance, error, onAsk, onClose }: Props) {
   const [question, setQuestion] = useState("");
   const titleId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -51,6 +52,7 @@ export function AIChatSheet({ open, instrument, isAsking, response, error, onAsk
       <p className="ai-chat-context">回答仅使用当前 OKX 行情工具数据，不连接真实交易执行。</p>
       <div className="ai-chat-suggestions" aria-label="推荐问题">{suggestions.map((suggestion) => <button type="button" key={suggestion} onClick={() => setQuestion(suggestion)}>{suggestion}</button>)}</div>
       {response && <article className="ai-chat-answer" aria-live="polite"><strong>{response.title}</strong><p>{response.summary}</p><ul>{response.keyFactors.slice(0, 3).map((factor) => <li key={factor}>{factor}</li>)}</ul><small>{response.disclaimer}</small></article>}
+      {guidance && <article className="ai-chat-answer" aria-live="polite"><strong>{guidance.title}</strong><p>{guidance.message}</p><div className="ai-chat-suggestions" aria-label="支持的问题">{guidance.suggestions.map((suggestion) => <button type="button" key={suggestion} onClick={() => setQuestion(suggestion)}>{suggestion}</button>)}</div></article>}
       {error && <p className="ai-chat-error" role="alert">{error}</p>}
       <form onSubmit={submit} className="ai-chat-form"><input ref={inputRef} value={question} maxLength={1000} onChange={(event) => setQuestion(event.target.value)} aria-label="向 AI 询问行情" placeholder="询问行情动因、风险或盘口结构…" /><button type="submit" aria-label="发送问题" disabled={!question.trim() || isAsking}>{isAsking ? <span className="ai-chat-spinner" /> : <PaperPlaneRight weight="fill" />}</button></form>
     </section>

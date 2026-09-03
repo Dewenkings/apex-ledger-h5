@@ -116,7 +116,7 @@ export function TradeScreen({ pair }: { pair: TradingPairConfig }) {
       </div>
       {visitedTabs.information && <div id="trade-panel-information" role="tabpanel" tabIndex={0} aria-labelledby="trade-tab-information" hidden={activeTab !== "information"}><TradeInstrumentInfo pair={pair} /></div>}
       {visitedTabs.ai && <div id="trade-panel-ai" role="tabpanel" tabIndex={0} aria-labelledby="trade-tab-ai" hidden={activeTab !== "ai"}>
-        <AICopilotPanel instrument={pair.instrument} timeframe={chartPeriod} insight={copilot.insight} response={copilot.response} isLoading={copilot.isLoading} isAsking={copilot.isAsking} insightError={copilot.insightError} chatError={copilot.chatError} onAsk={copilot.ask} />
+        <AICopilotPanel instrument={pair.instrument} timeframe={chartPeriod} insight={copilot.insight} response={copilot.response} guidance={copilot.guidance} isLoading={copilot.isLoading} isAsking={copilot.isAsking} insightError={copilot.insightError} chatError={copilot.chatError} onAsk={copilot.ask} />
       </div>}
     </div>
   </AppShell>;

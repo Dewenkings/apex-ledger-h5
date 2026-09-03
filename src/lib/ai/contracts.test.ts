@@ -30,7 +30,10 @@ const context = MarketContextSchema.parse({
 describe("AI contracts", () => {
   it("parses the API response envelope", () => {
     const insight = createDeterministicInsight(context);
-    expect(CopilotResponseSchema.parse({ intent: "market_summary", insight }).insight.title).toBe(insight.title);
+    const result = CopilotResponseSchema.parse({ intent: "market_summary", insight });
+    expect(result.intent).toBe("market_summary");
+    if (result.intent === "out_of_scope") throw new Error("Expected a market response");
+    expect(result.insight.title).toBe(insight.title);
   });
 
   it("rejects unsupported instruments and oversized questions", () => {

@@ -3,12 +3,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { CopilotResponseSchema, type AIInsight } from "@/lib/ai/contracts";
+import { CopilotResponseSchema, type AIInsight, type CopilotGuidance } from "@/lib/ai/contracts";
 import type { ChartPeriod } from "@/lib/market-data/types";
 
 type CopilotEndpoint = "/api/ai/insight" | "/api/ai/chat";
 
-async function requestInsight(endpoint: CopilotEndpoint, body: object, signal?: AbortSignal): Promise<AIInsight> {
+async function requestCopilot(endpoint: CopilotEndpoint, body: object, signal?: AbortSignal) {
   const response = await fetch(endpoint, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -16,12 +16,18 @@ async function requestInsight(endpoint: CopilotEndpoint, body: object, signal?: 
     signal,
   });
   if (!response.ok) throw new Error("AI 分析暂不可用");
-  return CopilotResponseSchema.parse(await response.json()).insight;
+  return CopilotResponseSchema.parse(await response.json());
+}
+
+async function requestInsight(endpoint: CopilotEndpoint, body: object, signal?: AbortSignal): Promise<AIInsight> {
+  const result = await requestCopilot(endpoint, body, signal);
+  if (result.intent === "out_of_scope") throw new Error("Automatic insight was routed out of scope");
+  return result.insight;
 }
 
 export function useTradingCopilot(instrument: string, timeframe: ChartPeriod, enabled = true) {
   const requestKey = `${instrument}:${timeframe}`;
-  const [chatState, setChatState] = useState<{ key: string; response: AIInsight | null; error: string | null } | null>(null);
+  const [chatState, setChatState] = useState<{ key: string; response: AIInsight | null; guidance: CopilotGuidance | null; error: string | null } | null>(null);
   const [askingKey, setAskingKey] = useState<string | null>(null);
   const chatAbortRef = useRef<AbortController | null>(null);
   const insightQuery = useQuery({
@@ -53,13 +59,18 @@ export function useTradingCopilot(instrument: string, timeframe: ChartPeriod, en
     const controller = new AbortController();
     chatAbortRef.current = controller;
     setAskingKey(chatKey);
-    setChatState({ key: chatKey, response: null, error: null });
+    setChatState({ key: chatKey, response: null, guidance: null, error: null });
     try {
-      const next = await requestInsight("/api/ai/chat", { instrument, timeframe, question }, controller.signal);
-      if (!controller.signal.aborted) setChatState({ key: chatKey, response: next, error: null });
+      const next = await requestCopilot("/api/ai/chat", { instrument, timeframe, question }, controller.signal);
+      if (!controller.signal.aborted) setChatState({
+        key: chatKey,
+        response: next.intent === "out_of_scope" ? null : next.insight,
+        guidance: next.intent === "out_of_scope" ? next.guidance : null,
+        error: null,
+      });
     } catch (cause: unknown) {
       if (!(cause instanceof DOMException && cause.name === "AbortError") && !controller.signal.aborted) {
-        setChatState({ key: chatKey, response: null, error: "AI 回答暂不可用，请稍后重试。" });
+        setChatState({ key: chatKey, response: null, guidance: null, error: "AI 回答暂不可用，请稍后重试。" });
       }
     } finally {
       if (chatAbortRef.current === controller) {
@@ -75,6 +86,7 @@ export function useTradingCopilot(instrument: string, timeframe: ChartPeriod, en
   return {
     insight: insightQuery.data ?? null,
     response: currentChatState?.response ?? null,
+    guidance: currentChatState?.guidance ?? null,
     isLoading,
     isAsking: askingKey === requestKey,
     insightError,

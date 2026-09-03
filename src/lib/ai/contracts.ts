@@ -10,7 +10,14 @@ export const AgentIntentSchema = z.enum([
   "risk_analysis",
   "pair_comparison",
   "order_impact",
+  "out_of_scope",
 ]);
+
+export const CopilotGuidanceSchema = z.object({
+  title: z.string().trim().min(1).max(80),
+  message: z.string().trim().min(1).max(300),
+  suggestions: z.array(z.string().trim().min(1).max(100)).min(1).max(4),
+});
 
 export const AgentRequestSchema = z.object({
   instrument: z.string().trim().toUpperCase().refine(
@@ -88,17 +95,24 @@ export const AIInsightSchema = z.object({
   fallback: z.boolean(),
 });
 
-export const CopilotResponseSchema = z.object({
-  intent: AgentIntentSchema,
-  insight: AIInsightSchema,
-  degradedReason: z.literal("model_unavailable").optional(),
-});
+export const CopilotResponseSchema = z.discriminatedUnion("intent", [
+  z.object({
+    intent: z.enum(["market_summary", "risk_analysis", "pair_comparison", "order_impact"]),
+    insight: AIInsightSchema,
+    degradedReason: z.literal("model_unavailable").optional(),
+  }),
+  z.object({
+    intent: z.literal("out_of_scope"),
+    guidance: CopilotGuidanceSchema,
+  }),
+]);
 
 export type AgentRequest = z.infer<typeof AgentRequestSchema>;
 export type AgentIntent = z.infer<typeof AgentIntentSchema>;
 export type MarketContext = z.infer<typeof MarketContextSchema>;
 export type AIInsight = z.infer<typeof AIInsightSchema>;
 export type CopilotResponse = z.infer<typeof CopilotResponseSchema>;
+export type CopilotGuidance = z.infer<typeof CopilotGuidanceSchema>;
 export type MarketBias = z.infer<typeof MarketBiasSchema>;
 
 const pct = (value: number): string => `${value.toFixed(1)}%`;

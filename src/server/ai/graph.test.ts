@@ -26,9 +26,37 @@ describe("classifyIntent", () => {
     expect(classifyIntent("买入 0.01 BTC 对余额有什么影响")).toBe("order_impact");
     expect(classifyIntent("总结当前行情")).toBe("market_summary");
   });
+
+  it("classifies unrelated lifestyle questions as out of scope", () => {
+    expect(classifyIntent("上海天气怎么样？")).toBe("out_of_scope");
+    expect(classifyIntent("帮我写一首诗")).toBe("out_of_scope");
+  });
+
+  it("keeps context-dependent short questions in the active market", () => {
+    expect(classifyIntent("现在怎么看？")).toBe("market_summary");
+  });
 });
 
 describe("runTradingCopilot", () => {
+  it("returns capability guidance without calling market tools or the model for unrelated questions", async () => {
+    const marketTools = { getMarketContext: vi.fn() };
+    const provider = { generate: vi.fn() };
+
+    const result = await runTradingCopilot(
+      { instrument: "BTC-USDT", timeframe: "1H", question: "上海天气怎么样？" },
+      { marketTools, provider },
+    );
+
+    expect(result).toMatchObject({
+      intent: "out_of_scope",
+      guidance: {
+        title: "这个问题不在行情助手的能力范围内",
+      },
+    });
+    expect(marketTools.getMarketContext).not.toHaveBeenCalled();
+    expect(provider.generate).not.toHaveBeenCalled();
+  });
+
   it("collects the active market context and returns validated model output", async () => {
     const marketTools = { getMarketContext: vi.fn().mockResolvedValue(context()) };
     const expected = { ...createDeterministicInsight(context()), fallback: false };
@@ -40,6 +68,7 @@ describe("runTradingCopilot", () => {
     );
 
     expect(result.intent).toBe("risk_analysis");
+    if (result.intent === "out_of_scope") throw new Error("Expected a risk response");
     expect(result.insight.fallback).toBe(false);
     expect(marketTools.getMarketContext).toHaveBeenCalledWith("BTC-USDT", "1H");
   });
@@ -66,6 +95,7 @@ describe("runTradingCopilot", () => {
       { marketTools, provider },
     );
 
+    if (result.intent === "out_of_scope") throw new Error("Expected a market response");
     expect(result.insight.fallback).toBe(true);
     expect(result.degradedReason).toBe("model_unavailable");
   });
