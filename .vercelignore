@@ -5,3 +5,6 @@
 # Local-only planning and verification documents.
 /docs/
 /design-qa.md
+
+# Local UI review screenshots.
+/artifacts/

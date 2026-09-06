@@ -123,7 +123,7 @@ export function MarketScreen() {
           <div className="table-head"><span>资产</span><span>价格</span><span>24H 涨跌</span></div>
           {visible.map((market) => <MarketDestination market={market} key={market.symbol}>
             <div className="market-row" data-testid={`market-row-${market.symbol}`}>
-              <div className="row gap-12"><AssetMark market={market} /><div><div className="market-symbol-line"><strong>{market.symbol}</strong></div><span className="muted block">{market.name} · USDT</span></div></div>
+              <div className="row gap-2.5"><AssetMark market={market} /><div><div className="market-symbol-line"><strong>{market.symbol}</strong></div><span className="muted block">{market.name}</span></div></div>
               <strong className="market-price mono">${priceFormatter.format(market.price)}</strong>
               <div className="market-change"><Change value={market.change} /></div>
             </div>

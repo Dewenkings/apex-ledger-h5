@@ -1,4 +1,4 @@
-import { ArrowDownRight, ArrowUpRight, Star } from "@phosphor-icons/react/dist/ssr";
+import { ArrowDownRight, ArrowUpRight } from "@phosphor-icons/react/dist/ssr";
 import type { Market } from "@/lib/data";
 
 export function AssetMark({ market, size = 38 }: { market: Pick<Market, "icon" | "color" | "symbol">; size?: number }) {
@@ -19,7 +19,7 @@ export function Change({ value }: { value: number }) {
 
 export function FavoriteMarketCard({ market }: { market: Market }) {
   return <article className="favorite-card" role="listitem">
-    <div className="favorite-identity"><AssetMark market={market} size={28} /><strong>{market.symbol}</strong><Star weight="fill" className="warning" /></div>
+    <div className="favorite-identity"><AssetMark market={market} size={28} /><strong>{market.symbol}</strong></div>
     <div className="favorite-price mono">${market.price.toLocaleString(undefined, { maximumFractionDigits: 4 })}</div>
     <div className="favorite-move"><Change value={market.change} /><Sparkline points={market.spark} positive={market.change >= 0} /></div>
   </article>;
